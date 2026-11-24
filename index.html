@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1F3864">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PRS Inspect">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<title>PRS Site Inspection</title>
+<style>
+:root{
+  --navy:#1F3864; --bg:#F3F5F9; --card:#fff; --text:#1b1f27; --muted:#5f6b7a; --line:#d9dee7;
+  --ok:#2e7d32; --defect:#c62828; --rig:#1565c0; --nv:#6d6d6d; --na:#8d8d8d;
+  --crit:#C00000; --high:#E46C0A; --med:#BF9000; --low:#548235;
+  --warnbg:#fff4e0; --errbg:#fde8e8;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+header.bar{position:sticky;top:0;z-index:5;background:var(--navy);color:#fff;display:flex;align-items:center;gap:8px;padding:10px 12px;padding-top:calc(10px + env(safe-area-inset-top))}
+header.bar h1{font-size:17px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header.bar .sub{font-size:12px;opacity:.8;font-weight:400}
+header.bar .logo{height:30px;background:#fff;border-radius:6px;padding:2px 4px;flex:0 0 auto}
+header.brand{background:#fff;color:var(--navy);border-bottom:3px solid var(--navy);justify-content:space-between}
+header.brand img{height:48px}
+header.brand h1{flex:0 1 auto;text-align:right;color:var(--navy)}
+header.bar button{background:transparent;border:0;color:#fff;font-size:22px;padding:4px 8px;min-width:40px}
+main{padding:12px 12px calc(90px + env(safe-area-inset-bottom));max-width:720px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.card.done{border-left:5px solid var(--ok)}
+.card.defect{border-left:5px solid var(--defect)}
+.card.rig{border-left:5px solid var(--rig)}
+.card.flash{box-shadow:0 0 0 3px #f9a825}
+.code{font-size:12px;color:var(--muted)}
+.desc{font-weight:600;margin:2px 0 6px}
+details{margin:4px 0 8px;font-size:14px;color:var(--muted)}
+details summary{cursor:pointer;color:var(--navy)}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.seg button{flex:1 1 auto;min-height:44px;padding:6px 10px;border:1.5px solid var(--line);background:#fff;border-radius:10px;font-size:14px;font-weight:600}
+.seg button.on{color:#fff}
+.seg button.sugg{border-style:dashed;border-color:#555}
+.s-OK.on{background:var(--ok);border-color:var(--ok)}
+.s-Defect.on{background:var(--defect);border-color:var(--defect)}
+.s-Notvisible.on,.s-NA.on{background:var(--nv);border-color:var(--nv)}
+.s-Riggerrequired.on{background:var(--rig);border-color:var(--rig)}
+.r-Critical.on{background:var(--crit);border-color:var(--crit)}
+.r-High.on{background:var(--high);border-color:var(--high)}
+.r-Medium.on{background:var(--med);border-color:var(--med)}
+.r-Low.on{background:var(--low);border-color:var(--low)}
+.opt.on{background:var(--navy);border-color:var(--navy)}
+.lbl{font-size:13px;color:var(--muted);margin-top:6px}
+input[type=text],input[type=number],input[type=date],select,textarea{width:100%;min-height:44px;padding:8px 10px;border:1.5px solid var(--line);border-radius:10px;background:#fff}
+textarea{min-height:60px;resize:vertical}
+.req{color:var(--defect);font-weight:700}
+.row{display:flex;gap:8px;align-items:center}
+.row > *{flex:1}
+.photos{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.thumb{position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:#eee;padding:0}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb span{position:absolute;left:0;bottom:0;background:rgba(0,0,0,.6);color:#fff;font-size:11px;padding:1px 4px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:8px 14px;border-radius:10px;border:1.5px solid var(--navy);background:#fff;color:var(--navy);font-weight:600;text-decoration:none}
+.btn.primary{background:var(--navy);color:#fff}
+.btn.danger{border-color:var(--defect);color:var(--defect)}
+.btn.small{min-height:36px;padding:4px 10px;font-size:14px}
+.btn.block{width:100%}
+.addphoto{width:72px;height:72px;border:1.5px dashed var(--navy);border-radius:8px;background:#fff;color:var(--navy);font-size:12px;font-weight:600}
+.linkbtn{background:none;border:0;color:var(--navy);padding:6px 0;font-size:14px;font-weight:600}
+.list a.item{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit}
+.list .grow{flex:1;min-width:0}
+.chip{display:inline-block;font-size:12px;font-weight:700;color:#fff;border-radius:999px;padding:2px 8px;margin:2px 2px 0 0}
+.chip.Critical{background:var(--crit)}.chip.High{background:var(--high)}.chip.Medium{background:var(--med)}.chip.Low{background:var(--low)}
+.chip.grey{background:#9aa4b2}.chip.blue{background:var(--rig)}.chip.green{background:var(--ok)}
+.progress{height:6px;background:#e3e7ee;border-radius:3px;overflow:hidden;margin-top:6px}
+.progress div{height:100%;background:var(--ok)}
+.muted{color:var(--muted);font-size:14px}
+.issue{padding:10px;border-radius:10px;margin-bottom:6px;font-size:14px;display:block;text-decoration:none;color:inherit}
+.issue.err{background:var(--errbg)}
+.issue.warn{background:var(--warnbg)}
+nav.bottom{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);display:flex;gap:8px;padding:8px 12px calc(8px + env(safe-area-inset-bottom));z-index:5}
+nav.bottom .btn{flex:1;min-width:0;display:block;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:26px;font-size:15px}
+.eq{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;background:#fafbfd}
+.diff-pos{color:var(--defect);font-weight:700}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;color:#fff}
+.overlay img{max-width:100%;max-height:75vh;border-radius:6px}
+.overlay .row{margin-top:12px;width:100%;max-width:480px}
+h2{font-size:16px;margin:16px 0 8px;color:var(--navy)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom));background:#323232;color:#fff;padding:10px 16px;border-radius:8px;z-index:30;font-size:14px;max-width:90%}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#12161d;--card:#1c222c;--text:#e8ecf2;--muted:#9aa6b6;--line:#333c4a;--warnbg:#3a2e14;--errbg:#3d1c1c}
+  .seg button,input[type=text],input[type=number],input[type=date],select,textarea,.btn,.addphoto,nav.bottom{background:#1c222c}
+  .btn.primary{background:#3b5ea8;border-color:#3b5ea8}
+  .btn,.addphoto,.linkbtn,details summary{color:#9db8f0;border-color:#9db8f0}
+  .eq{background:#171c24}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<input type="file" id="fileInput" accept="image/*" multiple hidden>
+<script>
+"use strict";
+const LIB = {"version":"5512da08f3","types":[{"code":"MONOPOLE","label":"Monopole","desc":"Plain greenfield monopole (tubular / polygonal, slip-joint or flanged)","tags":["ALL","ALL_GREENFIELD","FOUNDATION","BASEPLATE","TOWER","POLE","MONOPOLE"]},{"code":"CAMO","label":"Camouflaged monopole","desc":"Camouflaged monopole (palm / date / pine tree, flagpole, cladded column, shrouded pole)","tags":["ALL","ALL_GREENFIELD","FOUNDATION","BASEPLATE","TOWER","POLE","MONOPOLE","CAMO"]},{"code":"LATTICE","label":"Lattice tower","desc":"Greenfield lattice tower (3 or 4 legged)","tags":["ALL","ALL_GREENFIELD","FOUNDATION","BASEPLATE","TOWER","LATTICE"]},{"code":"GUYED","label":"Guyed mast","desc":"Guyed mast","tags":["ALL","ALL_GREENFIELD","FOUNDATION","BASEPLATE","TOWER","GUYED"]},{"code":"ROOFTOP","label":"Rooftop","desc":"Rooftop poles, frames, ballast mounts or towers","tags":["ALL","BUILDING","ROOF","ROOFTOP"]},{"code":"ROOFTOP_CAMO","label":"Rooftop - camouflaged","desc":"Rooftop installation with camouflage (screen, fake chimney, enclosure)","tags":["ALL","BUILDING","ROOF","ROOFTOP","CAMO"]},{"code":"WALLMOUNT","label":"Wall mount","desc":"Antennas / poles fixed to a building wall","tags":["ALL","BUILDING","WALLMOUNT"]},{"code":"STUBMAST_GROUND","label":"Stub mast - ground","desc":"Stub mast on a ground foundation","tags":["ALL","ALL_GREENFIELD","FOUNDATION","BASEPLATE","POLE","STUBMAST"]},{"code":"STUBMAST_ROOF","label":"Stub mast - roof","desc":"Stub mast on a roof","tags":["ALL","BUILDING","ROOF","BASEPLATE","POLE","STUBMAST"]},{"code":"TEMPORARY","label":"Temporary","desc":"Temporary structure (cell on wheels, skid / ballasted mast)","tags":["ALL","ALL_GREENFIELD","TEMPORARY"]},{"code":"STREETWORK","label":"Street work","desc":"Street work - equipment on street lighting / smart pole","tags":["ALL","FOUNDATION","BASEPLATE","POLE","STREETWORK"]}],"items":[{"code":"AL-SD-01","tags":["ALL"],"sec":1,"section":"Site data","rfq":"13","desc":"Site ID","look":"","rating":"","photo":false,"type":"TEXT","options":[],"mand":true,"label":"Site ID"},{"code":"AL-SD-02","tags":["ALL"],"sec":1,"section":"Site data","rfq":"13","desc":"Operator(s) / MNO(s) on structure","look":"","rating":"","photo":false,"type":"TEXT","options":[],"mand":true,"label":"Operator(s)"},{"code":"AL-SD-03","tags":["ALL"],"sec":1,"section":"Site data","rfq":"13","desc":"Structure type","look":"","rating":"","photo":false,"type":"LIST","options":["Monopole","Camouflaged monopole","Lattice tower","Guyed mast","Rooftop","Rooftop - camouflaged","Wall mount","Stub mast - ground","Stub mast - roof","Temporary","Street work"],"mand":true,"label":"Structure type"},{"code":"CM-SD-01","tags":["CAMO"],"sec":1,"section":"Site data","rfq":"7,9","desc":"Camouflage type","look":"","rating":"","photo":false,"type":"LIST","options":["Palm tree","Date tree","Pine tree","Flagpole","Cladded column","Shrouded / concealment pole","Rooftop screen / enclosure","Fake chimney / water tank","Other"],"mand":true,"label":"Camouflage type"},{"code":"MP-SD-01","tags":["MONOPOLE"],"sec":1,"section":"Site data","rfq":"13","desc":"Shaft form and joints","look":"","rating":"","photo":false,"type":"LIST","options":["Tubular - slip joint","Tubular - flanged","Polygonal - slip joint","Polygonal - flanged","Single section","Cannot determine"],"mand":true,"label":"Shaft form"},{"code":"LT-SD-01","tags":["LATTICE"],"sec":1,"section":"Site data","rfq":"13","desc":"Lattice form","look":"","rating":"","photo":false,"type":"LIST","options":["3-legged - angle","3-legged - tubular","4-legged - angle","4-legged - tubular","Other"],"mand":true,"label":"Lattice form"},{"code":"GY-SD-01","tags":["GUYED"],"sec":1,"section":"Site data","rfq":"5,13","desc":"Mast section","look":"","rating":"","photo":false,"type":"LIST","options":["Lattice - triangular","Lattice - square","Tubular","Other"],"mand":true,"label":"Mast section"},{"code":"GY-SD-02","tags":["GUYED"],"sec":1,"section":"Site data","rfq":"5,13","desc":"Number of guy levels and anchor points","look":"","rating":"","photo":false,"type":"TEXT","options":[],"mand":false,"label":"Guy levels / anchors"},{"code":"RT-SD-01","tags":["ROOFTOP"],"sec":1,"section":"Site data","rfq":"6,13","desc":"Rooftop installation form","look":"","rating":"","photo":false,"type":"LIST","options":["Poles fixed to parapet","Poles / frames fixed to roof slab","Ballast-mounted frames","Steel tower / mast on roof","Mixed"],"mand":true,"label":"Installation form"},{"code":"WM-SD-01","tags":["WALLMOUNT"],"sec":1,"section":"Site data","rfq":"6,13","desc":"Wall-mount form","look":"","rating":"","photo":false,"type":"LIST","options":["Brackets on wall","Poles fixed to wall","Antennas on facade cladding","Other"],"mand":true,"label":"Wall-mount form"},{"code":"TP-SD-01","tags":["TEMPORARY"],"sec":1,"section":"Site data","rfq":"13","desc":"Temporary structure form","look":"","rating":"","photo":false,"type":"LIST","options":["Cell on wheels (trailer)","Skid-mounted mast","Ballasted frame","Guyed temporary mast","Other"],"mand":true,"label":"Temporary structure form"},{"code":"SW-SD-01","tags":["STREETWORK"],"sec":1,"section":"Site data","rfq":"13","desc":"Street work form","look":"","rating":"","photo":false,"type":"LIST","options":["Street lighting pole","Smart / multi-function pole","Other street furniture"],"mand":true,"label":"Street work form"},{"code":"BD-SD-01","tags":["BUILDING"],"sec":1,"section":"Site data","rfq":"6","desc":"Building - number of floors, use, approximate age","look":"","rating":"","photo":false,"type":"TEXT","options":[],"mand":false,"label":"Building (floors, use, age)"},{"code":"BD-SD-02","tags":["BUILDING"],"sec":1,"section":"Site data","rfq":"6","desc":"Roof / wall construction","look":"","rating":"","photo":false,"type":"LIST","options":["Concrete slab","Steel / lightweight roof","Concrete wall","Masonry / block wall","Cladding","Other"],"mand":true,"label":"Roof / wall construction"},{"code":"AL-SD-04","tags":["ALL"],"sec":1,"section":"Site data","rfq":"13","desc":"Structure height (m) - from documents or estimated; for building-mounted, height above roof and building height","look":"","rating":"","photo":false,"type":"TEXT","options":[],"mand":false,"label":"Height (m)"},{"code":"AL-SD-05","tags":["ALL"],"sec":1,"section":"Site data","rfq":"13","desc":"Coordinates (latitude, longitude)","look":"","rating":"","photo":false,"type":"TEXT","options":["GPS"],"mand":true,"label":"Coordinates"},{"code":"AL-SD-06","tags":["ALL"],"sec":1,"section":"Site data","rfq":"13","desc":"Governorate","look":"","rating":"","photo":false,"type":"LIST","options":["Capital","Muharraq","Northern","Southern"],"mand":true,"label":"Governorate"},{"code":"AL-SD-07","tags":["ALL"],"sec":1,"section":"Site data","rfq":"13","desc":"Location (block / road / area)","look":"","rating":"","photo":false,"type":"TEXT","options":[],"mand":true,"label":"Location"},{"code":"AL-SD-08","tags":["ALL"],"sec":1,"section":"Site data","rfq":"13","desc":"Visit date","look":"","rating":"","photo":false,"type":"DATE","options":[],"mand":true,"label":"Visit date"},{"code":"AL-SD-09","tags":["ALL"],"sec":1,"section":"Site data","rfq":"13","desc":"Inspecting engineer","look":"","rating":"","photo":false,"type":"TEXT","options":[],"mand":true,"label":"Inspected by"},{"code":"AL-SD-10","tags":["ALL"],"sec":1,"section":"Site data","rfq":"13","desc":"Weather at time of visit","look":"","rating":"","photo":false,"type":"LIST","options":["Clear","Cloudy","Dusty / hazy","Windy","Rain"],"mand":true,"label":"Weather"},{"code":"AL-SD-11","tags":["ALL"],"sec":1,"section":"Site data","rfq":"13","desc":"Access notes (escort, keys, restrictions, MNO representative)","look":"","rating":"","photo":false,"type":"TEXT","options":[],"mand":false,"label":"Access notes"},{"code":"AL-SD-12","tags":["ALL"],"sec":1,"section":"Site data","rfq":"13","desc":"General site photos (overall view from two directions, compound / roof area, structure base)","look":"","rating":"","photo":true,"type":"TEXT","options":[],"mand":true,"label":"General site photos"},{"code":"AL-DOC-01","tags":["ALL"],"sec":2,"section":"Document review","rfq":"1,8","desc":"Design drawings available","look":"","rating":"","photo":false,"type":"LIST","options":["Yes","No","Partial"],"mand":true,"label":"Design drawings"},{"code":"AL-DOC-02","tags":["ALL"],"sec":2,"section":"Document review","rfq":"1,8","desc":"Structural analysis report available","look":"","rating":"","photo":false,"type":"LIST","options":["Yes","No","Partial"],"mand":true,"label":"Structural analysis report"},{"code":"FN-DOC-01","tags":["FOUNDATION"],"sec":2,"section":"Document review","rfq":"1","desc":"Foundation drawings / design available","look":"","rating":"","photo":false,"type":"LIST","options":["Yes","No","Partial"],"mand":true,"label":"Foundation drawings / design"},{"code":"BD-DOC-01","tags":["BUILDING"],"sec":2,"section":"Document review","rfq":"6","desc":"Building drawings available","look":"","rating":"","photo":false,"type":"LIST","options":["Yes","No","Partial"],"mand":true,"label":"Building drawings"},{"code":"BD-DOC-02","tags":["BUILDING"],"sec":2,"section":"Document review","rfq":"6","desc":"Building structural assessment / roof or wall capacity check available","look":"","rating":"","photo":false,"type":"LIST","options":["Yes","No","Partial"],"mand":true,"label":"Building structural assessment"},{"code":"CM-DOC-01","tags":["CAMO"],"sec":2,"section":"Document review","rfq":"9","desc":"Approved aesthetic design (drawings / photos) available","look":"","rating":"","photo":false,"type":"LIST","options":["Yes","No","Partial"],"mand":true,"label":"Approved aesthetic design"},{"code":"AL-DOC-03","tags":["ALL"],"sec":2,"section":"Document review","rfq":"11","desc":"Load certificate available","look":"","rating":"","photo":false,"type":"LIST","options":["Yes","No","Partial"],"mand":true,"label":"Load certificate"},{"code":"AL-DOC-04","tags":["ALL"],"sec":2,"section":"Document review","rfq":"10","desc":"Previous inspection records available","look":"","rating":"","photo":false,"type":"LIST","options":["Yes","No","Partial"],"mand":true,"label":"Previous inspection records"},{"code":"TP-DOC-01","tags":["TEMPORARY"],"sec":2,"section":"Document review","rfq":"12","desc":"Approved period of temporary installation (permit validity date)","look":"","rating":"","photo":false,"type":"TEXT","options":[],"mand":false,"label":"Approved period (temporary)"},{"code":"AL-DOC-05","tags":["ALL"],"sec":2,"section":"Document review","rfq":"8","desc":"Design standard","look":"","rating":"","photo":false,"type":"LIST","options":["TIA-222-G","TIA-222-H","EN 1991-1-4 / EN 1993-3-1","BS 8100","Other","Not stated"],"mand":false,"label":"Design standard"},{"code":"AL-DOC-06","tags":["ALL"],"sec":2,"section":"Document review","rfq":"8","desc":"Basic wind speed (m/s) and basis (3-s gust / 10-min mean)","look":"","rating":"","photo":false,"type":"TEXT","options":[],"mand":false,"label":"Basic wind speed"},{"code":"AL-DOC-07","tags":["ALL"],"sec":2,"section":"Document review","rfq":"8","desc":"Exposure / terrain category","look":"","rating":"","photo":false,"type":"TEXT","options":[],"mand":false,"label":"Exposure / terrain category"},{"code":"AL-DOC-08","tags":["ALL"],"sec":2,"section":"Document review","rfq":"8","desc":"Structural analysis reference and date","look":"","rating":"","photo":false,"type":"TEXT","options":[],"mand":false,"label":"Analysis reference and date"},{"code":"AL-DOC-09","tags":["ALL"],"sec":2,"section":"Document review","rfq":"3,11","desc":"Equipment considered in the analysis (summary)","look":"","rating":"","photo":false,"type":"TEXT","options":[],"mand":false,"label":"Equipment considered in analysis"},{"code":"AL-DOC-10","tags":["ALL"],"sec":2,"section":"Document review","rfq":"8","desc":"Reported max utilisation - structure members (%)","look":"","rating":"","photo":false,"type":"NUMBER","options":[],"mand":false,"label":"Max. utilisation - members (%)"},{"code":"AL-DOC-11","tags":["ALL"],"sec":2,"section":"Document review","rfq":"8","desc":"Reported max utilisation - connections / base plate (%)","look":"","rating":"","photo":false,"type":"NUMBER","options":[],"mand":false,"label":"Max. utilisation - connections / base plate (%)"},{"code":"AL-DOC-12","tags":["ALL"],"sec":2,"section":"Document review","rfq":"8","desc":"Reported max utilisation - anchor bolts / fixings (%)","look":"","rating":"","photo":false,"type":"NUMBER","options":[],"mand":false,"label":"Max. utilisation - anchor bolts / fixings (%)"},{"code":"FN-DOC-02","tags":["FOUNDATION"],"sec":2,"section":"Document review","rfq":"1,8","desc":"Reported max utilisation - foundation (%)","look":"","rating":"","photo":false,"type":"NUMBER","options":[],"mand":false,"label":"Max. utilisation - foundation (%)"},{"code":"GY-DOC-01","tags":["GUYED"],"sec":2,"section":"Document review","rfq":"5,8","desc":"Reported max utilisation - guy wires / anchors (%)","look":"","rating":"","photo":false,"type":"NUMBER","options":[],"mand":false,"label":"Max. utilisation - guys / anchors (%)"},{"code":"BD-DOC-03","tags":["BUILDING"],"sec":2,"section":"Document review","rfq":"6","desc":"Building / roof elements checked for installation loads","look":"","rating":"","photo":false,"type":"LIST","options":["Yes","No","Not stated"],"mand":false,"label":"Building checked for installation loads"},{"code":"AL-DOC-13","tags":["ALL"],"sec":2,"section":"Document review","rfq":"11","desc":"Load certificate no.","look":"","rating":"","photo":false,"type":"TEXT","options":[],"mand":false,"label":"Load certificate no."},{"code":"AL-DOC-14","tags":["ALL"],"sec":2,"section":"Document review","rfq":"11","desc":"Load certificate date","look":"","rating":"","photo":false,"type":"DATE","options":[],"mand":false,"label":"Load certificate date"},{"code":"AL-DOC-15","tags":["ALL"],"sec":2,"section":"Document review","rfq":"10","desc":"Previous inspection - date and open issues","look":"","rating":"","photo":false,"type":"TEXT","options":[],"mand":false,"label":"Previous inspection"},{"code":"AL-DOC-16","tags":["ALL"],"sec":2,"section":"Document review","rfq":"8","desc":"Design basis clearly stated in documents","look":"Design standard, wind speed or exposure not stated or unclear in the analysis report.","rating":"Medium","photo":false,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-DOC-17","tags":["ALL"],"sec":2,"section":"Document review","rfq":"8,12","desc":"Reported utilisations within capacity","look":"Any reported utilisation above 100%, or the report states the structure / foundation needs strengthening.","rating":"High","photo":false,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BD-DOC-04","tags":["BUILDING"],"sec":2,"section":"Document review","rfq":"6","desc":"Building suitability covered by documents","look":"No building structural assessment showing the roof / wall can carry the installation, or building changed since the assessment.","rating":"Medium","photo":false,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"TP-DOC-02","tags":["TEMPORARY"],"sec":2,"section":"Document review","rfq":"12","desc":"Temporary installation within approved period","look":"Approval / permit period expired or not provided.","rating":"Medium","photo":false,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-DOC-18","tags":["ALL"],"sec":2,"section":"Document review","rfq":"8,11","desc":"Document review conclusion","look":"","rating":"","photo":false,"type":"LIST","options":["Covers current loading","Does not cover current loading","Cannot confirm"],"mand":true,"label":"Document review conclusion"},{"code":"BD-BLD-01","tags":["BUILDING"],"sec":3,"section":"Building & roof","rfq":"6","desc":"Building structure - visible condition","look":"Cracks in columns, beams or walls; spalling or exposed reinforcement visible on the roof or facade.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BD-BLD-02","tags":["ROOF"],"sec":3,"section":"Building & roof","rfq":"6","desc":"Roof slab around supports","look":"Cracks, sagging, spalling or ponding near supports; signs of leakage on the ceiling below (if accessible).","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BD-BLD-03","tags":["ROOF"],"sec":3,"section":"Building & roof","rfq":"6,10","desc":"Waterproofing at supports and penetrations","look":"Damaged or missing waterproofing at support bases, plinths or cable penetrations.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BD-BLD-04","tags":["ROOF"],"sec":3,"section":"Building & roof","rfq":"6","desc":"Support positions","look":"Supports bearing on slab mid-span, on screed / tiles only, or on parapets, with no document confirming this is acceptable.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BD-BLD-05","tags":["ROOF","WALLMOUNT"],"sec":3,"section":"Building & roof","rfq":"6,12","desc":"Parapet walls carrying equipment","look":"Cracks, leaning, loose blocks or mortar at or near the fixings of poles / brackets.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BD-BLD-06","tags":["WALLMOUNT"],"sec":3,"section":"Building & roof","rfq":"6,12","desc":"Wall at fixings","look":"Cracks or spalling around anchors; fixings into hollow blocks, plaster or cladding only.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BD-BLD-07","tags":["BUILDING"],"sec":3,"section":"Building & roof","rfq":"6","desc":"Building alterations or works near installation","look":"New floors, extensions, roof works or equipment added that may affect the supports.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BD-BLD-08","tags":["ROOF"],"sec":3,"section":"Building & roof","rfq":"6","desc":"Other heavy loads on roof","look":"Cabinets, generators, water tanks or ballast concentrated near supports without spreader / plinth.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"FN-FDN-01","tags":["FOUNDATION"],"sec":4,"section":"Foundation / base support","rfq":"1","desc":"Foundation pedestal(s) - cracking","look":"Cracks wider than hairline (approx. 0.3 mm), map cracking, or cracks radiating from anchor bolts / corners (rate High if radiating from bolts).","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"FN-FDN-02","tags":["FOUNDATION"],"sec":4,"section":"Foundation / base support","rfq":"1","desc":"Foundation pedestal(s) - spalling and surface deterioration","look":"Spalled or delaminated concrete, honeycombing, salt attack, efflorescence, softened surface.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"FN-FDN-03","tags":["FOUNDATION"],"sec":4,"section":"Foundation / base support","rfq":"1,12","desc":"Exposed or corroding reinforcement","look":"Visible reinforcement bars, rust staining or cracking along bar lines.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"FN-FDN-04","tags":["FOUNDATION"],"sec":4,"section":"Foundation / base support","rfq":"1,2","desc":"Signs of settlement or rotation","look":"Gap between pedestal and surrounding ground / slab, tilted pedestal, cracked or displaced adjacent slab.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"FN-FDN-05","tags":["FOUNDATION"],"sec":4,"section":"Foundation / base support","rfq":"1","desc":"Ponding / water around the foundation","look":"Standing water or wet ground at the pedestal, signs of repeated water collection.","rating":"Low","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"FN-FDN-06","tags":["FOUNDATION"],"sec":4,"section":"Foundation / base support","rfq":"1,12","desc":"Erosion or undermining of soil","look":"Soil washed out or removed around / below the pedestal, footing edge exposed, voids.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"FN-FDN-07","tags":["FOUNDATION"],"sec":4,"section":"Foundation / base support","rfq":"1","desc":"Soil cover / pedestal projection","look":"Pedestal buried so base plate or bolts are in contact with soil; or ground lowered below design level.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"TP-FDN-01","tags":["TEMPORARY"],"sec":4,"section":"Foundation / base support","rfq":"1,12","desc":"Outriggers / stabiliser legs","look":"Outriggers not deployed, not on pads, pads sinking or on soft ground, locking pins missing.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"TP-FDN-02","tags":["TEMPORARY"],"sec":4,"section":"Foundation / base support","rfq":"1,12","desc":"Ballast","look":"Ballast blocks missing, displaced, cracked or not secured; quantity visibly different from design.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"TP-FDN-03","tags":["TEMPORARY"],"sec":4,"section":"Foundation / base support","rfq":"1","desc":"Ground under temporary structure","look":"Settlement, soft ground, ponding or erosion under the trailer / skid / outrigger pads.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"TP-FDN-04","tags":["TEMPORARY"],"sec":4,"section":"Foundation / base support","rfq":"1,10","desc":"Trailer / skid chassis","look":"Corrosion or damage to chassis, wheels not chocked, jacks not locked.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BP-BAS-01","tags":["BASEPLATE"],"sec":5,"section":"Base connection","rfq":"1,10","desc":"Base plate - corrosion and coating","look":"Coating / galvanising loss, rust, pitting or section loss on base plate or stiffeners.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BP-BAS-02","tags":["BASEPLATE"],"sec":5,"section":"Base connection","rfq":"1,12","desc":"Base plate and member-to-plate weld - cracks or distortion","look":"Any visible crack at the shaft / leg-to-base-plate weld or stiffener welds; bent or distorted plate.","rating":"Critical","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BP-BAS-03","tags":["BASEPLATE"],"sec":5,"section":"Base connection","rfq":"1","desc":"Grout - presence","look":"Grout missing where the design requires it, or partial grout only.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BP-BAS-04","tags":["BASEPLATE"],"sec":5,"section":"Base connection","rfq":"1","desc":"Grout / stand-off condition","look":"Grout cracked, crumbling, with voids or separated from plate; on stand-off bases, debris or water under the plate, levelling nuts corroded.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BP-BAS-05","tags":["BASEPLATE"],"sec":5,"section":"Base connection","rfq":"1,12","desc":"Anchor bolts - all bolts present","look":"Fewer anchor bolts than base plate holes / design, or a bolt cut or broken.","rating":"Critical","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BP-BAS-06","tags":["BASEPLATE"],"sec":5,"section":"Base connection","rfq":"1,12","desc":"Anchor bolts - nuts and washers","look":"Missing nut or washer, nut not seated on the plate, visible gap under nut.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BP-BAS-07","tags":["BASEPLATE"],"sec":5,"section":"Base connection","rfq":"1","desc":"Anchor bolts - double-nut / lock-nut arrangement","look":"Lock nut missing where design shows double nuts; arrangement inconsistent between bolts.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BP-BAS-08","tags":["BASEPLATE"],"sec":5,"section":"Base connection","rfq":"1,10","desc":"Anchor bolts - corrosion","look":"Rust on bolts / nuts; rate High if visible section loss or necking at the grout / plate level.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BP-BAS-09","tags":["BASEPLATE"],"sec":5,"section":"Base connection","rfq":"1","desc":"Anchor bolts - thread projection","look":"Bolt end below top of nut, or bolts noticeably uneven in projection.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BP-BAS-10","tags":["BASEPLATE"],"sec":5,"section":"Base connection","rfq":"10","desc":"Bolt caps / covers","look":"Bolt caps or covers missing or damaged, no protection on exposed threads.","rating":"Low","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"LT-BAS-01","tags":["LATTICE"],"sec":5,"section":"Base connection","rfq":"1,12","desc":"Leg stubs encased in concrete (where applicable)","look":"Corrosion at the steel / concrete line, cracked concrete around the leg, water trapped at the leg.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GY-BAS-01","tags":["GUYED"],"sec":5,"section":"Base connection","rfq":"1,12","desc":"Mast base (pinned or plated)","look":"Damaged pin or base plate, missing pin / bolts, mast not seated centrally on base.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"RT-BAS-01","tags":["ROOFTOP"],"sec":5,"section":"Base connection","rfq":"1,6,12","desc":"Roof fixings - anchors to slab / beams","look":"Anchors missing, loose or corroded; base plates rocking; concrete cracked around anchors.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"RT-BAS-02","tags":["ROOFTOP"],"sec":5,"section":"Base connection","rfq":"1,6,12","desc":"Ballast frames (where applicable)","look":"Ballast blocks missing, displaced or cracked; frame not bearing evenly; signs of sliding.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"RT-BAS-03","tags":["ROOF"],"sec":5,"section":"Base connection","rfq":"6","desc":"Plinths / sleepers / spreaders under supports","look":"Crushed, cracked, decayed or missing plinths / spreaders.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"WM-BAS-01","tags":["WALLMOUNT"],"sec":5,"section":"Base connection","rfq":"1,6,12","desc":"Wall anchors and bracket plates","look":"Missing, loose or pulled-out anchors; gap between bracket plate and wall.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-STR-01","tags":["ALL"],"sec":6,"section":"Structure","rfq":"1,10","desc":"Steelwork - general corrosion","look":"Rust over areas of the structure, flaking coating, rust streaks.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-STR-02","tags":["ALL"],"sec":6,"section":"Structure","rfq":"10","desc":"Steelwork - coating / galvanising loss","look":"Coating worn, peeled or damaged without significant rust yet.","rating":"Low","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-STR-03","tags":["ALL"],"sec":6,"section":"Structure","rfq":"1,12","desc":"Unauthorised modifications","look":"Members cut or drilled, brackets or plates welded / drilled on site, not shown on drawings.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"PL-STR-01","tags":["POLE"],"sec":6,"section":"Structure","rfq":"1,12","desc":"Pole - localised corrosion at base","look":"Pitting or section loss at the bottom of the pole, at ground contact, or inside (seen through door).","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"PL-STR-02","tags":["POLE"],"sec":6,"section":"Structure","rfq":"1,12","desc":"Pole - dents and impact damage","look":"Dents, gouges or vehicle impact marks; rate High if significant or near base / door.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"PL-STR-03","tags":["POLE"],"sec":6,"section":"Structure","rfq":"1,12","desc":"Pole - local buckling / ovalisation","look":"Wrinkling, rippling, local bulging or out-of-round shape of the pole wall.","rating":"Critical","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"PL-STR-04","tags":["POLE"],"sec":6,"section":"Structure","rfq":"1,12","desc":"Pole - cracks at welds","look":"Visible cracks or rust lines at seams, door frame welds, flange welds or attachment welds.","rating":"Critical","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"MP-STR-01","tags":["MONOPOLE"],"sec":6,"section":"Structure","rfq":"1,2","desc":"Slip joints","look":"Visible gap or separation at the joint, overlap visibly short or uneven, rust bleeding from the joint.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"MP-STR-02","tags":["MONOPOLE","STUBMAST"],"sec":6,"section":"Structure","rfq":"1,12","desc":"Flange connections","look":"Missing or loose bolts / nuts, gap between flange plates, corrosion at flange.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"PL-STR-05","tags":["POLE"],"sec":6,"section":"Structure","rfq":"1,10","desc":"Access / service door - cover and frame","look":"Door cover missing, unsecured or damaged; cracks, corrosion or distortion of door frame (rate High for frame cracks).","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"PL-STR-06","tags":["POLE"],"sec":6,"section":"Structure","rfq":"10","desc":"Drain holes / water inside pole","look":"Drain holes blocked, water or debris inside the pole base.","rating":"Low","photo":false,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"PL-STR-07","tags":["POLE"],"sec":6,"section":"Structure","rfq":"1,12","desc":"Pole openings - ports and unauthorised holes","look":"Cable ports without grommets / covers; holes cut in the pole not shown on drawings.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"LT-STR-01","tags":["LATTICE","GUYED"],"sec":6,"section":"Structure","rfq":"1,12","desc":"Legs / main members","look":"Bent, buckled, kinked or impact-damaged leg members.","rating":"Critical","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"LT-STR-02","tags":["LATTICE","GUYED"],"sec":6,"section":"Structure","rfq":"1,12","desc":"Bracing members","look":"Bent, buckled or missing bracing / diagonal / horizontal members.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"LT-STR-03","tags":["LATTICE","GUYED"],"sec":6,"section":"Structure","rfq":"1,12","desc":"Bolted connections (visible from ground)","look":"Missing or loose bolts / nuts at member connections.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"LT-STR-04","tags":["LATTICE","GUYED"],"sec":6,"section":"Structure","rfq":"1,12","desc":"Gusset plates","look":"Cracked, bent or distorted gusset plates.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"LT-STR-05","tags":["LATTICE","GUYED"],"sec":6,"section":"Structure","rfq":"1,12","desc":"Leg splices / flange joints","look":"Gaps, missing bolts or corrosion at leg splices.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"LT-STR-06","tags":["LATTICE","GUYED"],"sec":6,"section":"Structure","rfq":"1,10","desc":"Pack rust / crevice corrosion at connections","look":"Rust swelling between plates or back-to-back angles, plates pushed apart.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"RT-STR-01","tags":["ROOFTOP"],"sec":6,"section":"Structure","rfq":"1,6,12","desc":"Rooftop poles / frames - members","look":"Bent or damaged members, missing bracing, poles visibly flexing or overloaded.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"RT-STR-02","tags":["ROOFTOP"],"sec":6,"section":"Structure","rfq":"1,6,12","desc":"Tie-backs / bracing to roof or parapet","look":"Tie-backs missing, slack, corroded or detached.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"RT-STR-03","tags":["ROOFTOP"],"sec":6,"section":"Structure","rfq":"1,6,12","desc":"Rooftop tower / mast (where present)","look":"Bent members, missing bolts or bracing, damaged connections on rooftop towers / masts.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"WM-STR-01","tags":["WALLMOUNT"],"sec":6,"section":"Structure","rfq":"1,6,12","desc":"Wall brackets / poles","look":"Bent, loose or corroded brackets or poles; brackets visibly overloaded.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"TP-STR-01","tags":["TEMPORARY"],"sec":6,"section":"Structure","rfq":"1,12","desc":"Telescopic / sectional mast","look":"Section locking pins missing, sections not locked, mast damaged or extended beyond design.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"TP-STR-02","tags":["TEMPORARY"],"sec":6,"section":"Structure","rfq":"1,12","desc":"Temporary structure members and connections","look":"Bent members, missing bolts / pins, damaged hinges.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"SW-STR-01","tags":["STREETWORK"],"sec":6,"section":"Structure","rfq":"3,12","desc":"Equipment enclosure / shroud at pole top","look":"Shroud or cover cracked, loose or missing; enclosure not secure.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GY-GUY-01","tags":["GUYED","TEMPORARY"],"sec":7,"section":"Guy wires & anchors","rfq":"5","desc":"Guy wire condition","look":"Corrosion, broken outer wires, kinks, bird-caging.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GY-GUY-02","tags":["GUYED","TEMPORARY"],"sec":7,"section":"Guy wires & anchors","rfq":"5,12","desc":"Guy missing / broken / detached","look":"Any guy missing, broken or detached at mast or anchor.","rating":"Critical","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GY-GUY-03","tags":["GUYED","TEMPORARY"],"sec":7,"section":"Guy wires & anchors","rfq":"5","desc":"Visible slack or uneven sag (visual only)","look":"One guy visibly slack, or sag clearly different from guys at the same level.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GY-GUY-04","tags":["GUYED","TEMPORARY"],"sec":7,"section":"Guy wires & anchors","rfq":"5","desc":"Guy terminations","look":"Missing or wrongly fitted wire-rope grips / clips, missing thimbles, preformed grips slipping.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GY-GUY-05","tags":["GUYED","TEMPORARY"],"sec":7,"section":"Guy wires & anchors","rfq":"5","desc":"Turnbuckles and locking","look":"Turnbuckle not locked (lock nut / wire missing), corrosion, little thread engagement.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GY-GUY-06","tags":["GUYED"],"sec":7,"section":"Guy wires & anchors","rfq":"5","desc":"Anchor blocks - concrete","look":"Cracks, spalling, exposed reinforcement or damage to anchor blocks.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GY-GUY-07","tags":["GUYED","TEMPORARY"],"sec":7,"section":"Guy wires & anchors","rfq":"5,12","desc":"Anchor rods / shackles","look":"Corrosion at the soil / concrete line, bent rod, rod not aligned with guy.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GY-GUY-08","tags":["GUYED"],"sec":7,"section":"Guy wires & anchors","rfq":"5","desc":"Ground at anchors","look":"Erosion, soil uplift or cracking around anchors, ponding.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GY-GUY-09","tags":["GUYED","TEMPORARY"],"sec":7,"section":"Guy wires & anchors","rfq":"5,12","desc":"Anchor protection and public safety","look":"Anchors outside the fence, no barrier against vehicles, guys crossing public areas without markers.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GY-GUY-10","tags":["GUYED","TEMPORARY"],"sec":7,"section":"Guy wires & anchors","rfq":"5","desc":"Obstructions along guy paths","look":"Structures, trees or equipment touching or close to guys.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GY-GUY-11","tags":["GUYED"],"sec":7,"section":"Guy wires & anchors","rfq":"5","desc":"Guy attachment at mast (from ground)","look":"Attachment plates / brackets visibly distorted, missing pins or shackles.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-ALN-01","tags":["ALL"],"sec":8,"section":"Alignment","rfq":"2","desc":"Visible tilt / lean","look":"Apparent lean of the structure / poles when viewed from two directions at about 90 degrees (visual only - no survey).","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-ALN-02","tags":["POLE","LATTICE","GUYED","TEMPORARY"],"sec":8,"section":"Alignment","rfq":"2","desc":"Visible bow, kink or deformation","look":"Structure visibly not straight, kink at a joint, mast not straight between guy levels.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"TW-ALN-01","tags":["TOWER"],"sec":8,"section":"Alignment","rfq":"2,3","desc":"Head frame / platform level","look":"Head frame, platform or antenna mounts visibly out of level or rotated.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"TW-APP-01","tags":["TOWER"],"sec":9,"section":"Appurtenances","rfq":"3,10","desc":"Platform / head frame","look":"Bent or missing members, missing bolts, damaged grating, corrosion.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-APP-01","tags":["ALL"],"sec":9,"section":"Appurtenances","rfq":"3,12","desc":"Antenna mounts, side arms, brackets and clamps","look":"Loose or missing clamps, bent pipes / arms, mounts not secure, corrosion.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-APP-02","tags":["ALL"],"sec":9,"section":"Appurtenances","rfq":"3,10","desc":"Cable ladder / tray","look":"Missing or loose fixings, broken sections, ladder / tray detached.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-APP-03","tags":["ALL"],"sec":9,"section":"Appurtenances","rfq":"3,12","desc":"Feeders and cables on structure","look":"Cables not clamped, hanging or loose, damaged sheathing, cable entry not sealed.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"TW-APP-02","tags":["TOWER"],"sec":9,"section":"Appurtenances","rfq":"10","desc":"Climbing ladder / step bolts (from ground)","look":"Missing rungs or step bolts, loose fixings, bent sections.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"TW-APP-03","tags":["TOWER"],"sec":9,"section":"Appurtenances","rfq":"10,12","desc":"Fall-arrest rail / cable (from ground)","look":"Fall-arrest system missing, discontinuous, detached or visibly damaged.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-APP-04","tags":["ALL"],"sec":9,"section":"Appurtenances","rfq":"10","desc":"Lightning rod / air terminal","look":"Missing, bent or detached air terminal; down conductor not visible.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-APP-05","tags":["ALL"],"sec":9,"section":"Appurtenances","rfq":"10,12","desc":"Aviation obstruction light and marking (where required)","look":"Light missing or damaged, not working (if observable), obstruction paint missing / faded.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-APP-06","tags":["ALL"],"sec":9,"section":"Appurtenances","rfq":"3,11,12","desc":"Redundant / abandoned equipment","look":"Unused antennas, brackets, cables or units left on the structure.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-EQP-01","tags":["ALL"],"sec":10,"section":"Equipment vs load certificate","rfq":"3,11","desc":"Equipment count method","look":"","rating":"","photo":false,"type":"LIST","options":["Fully counted from ground / roof level","Partly counted - some equipment not visible","Not countable without rigger access"],"mand":true,"label":"Equipment count method"},{"code":"AL-EQP-02","tags":["ALL"],"sec":10,"section":"Equipment vs load certificate","rfq":"3,11","desc":"Antennas - quantity found vs load certificate","look":"More antennas found than on the load certificate (fewer = record only, rate Low). If equipment cannot be seen or counted from ground / roof level, set Status = Rigger required.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-EQP-03","tags":["ALL"],"sec":10,"section":"Equipment vs load certificate","rfq":"3,11","desc":"RRUs - quantity found vs load certificate","look":"More RRUs found than on the load certificate. If equipment cannot be seen or counted from ground / roof level, set Status = Rigger required.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-EQP-04","tags":["ALL"],"sec":10,"section":"Equipment vs load certificate","rfq":"3,11","desc":"Microwave dishes - quantity and size vs load certificate","look":"More dishes, or larger dishes, than on the load certificate. If equipment cannot be seen or counted from ground / roof level, set Status = Rigger required.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-EQP-05","tags":["ALL"],"sec":10,"section":"Equipment vs load certificate","rfq":"3,11","desc":"Other equipment on structure (TMAs, combiners, junction boxes, units at height)","look":"Equipment present that is not shown on the load certificate. If equipment cannot be seen or counted from ground / roof level, set Status = Rigger required.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-EQP-06","tags":["ALL"],"sec":10,"section":"Equipment vs load certificate","rfq":"3,11","desc":"Mounting elevations","look":"Equipment installed at elevations clearly different from the load certificate.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-EQP-07","tags":["ALL"],"sec":10,"section":"Equipment vs load certificate","rfq":"3,11","desc":"Equipment of other operators / third parties","look":"Equipment of an operator not named on the load certificate.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"CM-CAM-01","tags":["CAMO"],"sec":11,"section":"Camouflage","rfq":"7,9","desc":"Branches / fronds - number and arrangement","look":"Number or arrangement of branches noticeably less than approved design; bare trunk at the crown.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"CM-CAM-02","tags":["CAMO"],"sec":11,"section":"Camouflage","rfq":"7","desc":"Broken or missing leaves / fronds","look":"Broken, torn or missing leaves or fronds.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"CM-CAM-03","tags":["CAMO"],"sec":11,"section":"Camouflage","rfq":"7,12","desc":"Loose or hanging parts - falling hazard","look":"Branches, leaves, panels or covers hanging, partly detached or moving in wind (rate Critical if over a public area).","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"CM-CAM-04","tags":["CAMO"],"sec":11,"section":"Camouflage","rfq":"7,12","desc":"Branch sockets and fixings to trunk","look":"Loose, corroded or missing bolts / sockets; branches drooping or rotated at the socket.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"CM-CAM-05","tags":["CAMO"],"sec":11,"section":"Camouflage","rfq":"7,9","desc":"Bark / trunk cladding / screen panels","look":"Cracked, detached or missing panels, open joints, exposed steel behind.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"CM-CAM-06","tags":["CAMO"],"sec":11,"section":"Camouflage","rfq":"7","desc":"Cladding / screen fasteners (screws, straps, rivets)","look":"Missing or corroded fasteners, straps loose.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"CM-CAM-07","tags":["CAMO"],"sec":11,"section":"Camouflage","rfq":"7,9","desc":"Colour and UV degradation","look":"Faded, discoloured or brittle leaves / panels compared with approved design.","rating":"Low","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"CM-CAM-08","tags":["CAMO"],"sec":11,"section":"Camouflage","rfq":"9","desc":"Concealment of antennas and RRUs","look":"Antennas, RRUs or cables visible through the camouflage; antenna socks / covers missing.","rating":"Low","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"CM-CAM-09","tags":["CAMO"],"sec":11,"section":"Camouflage","rfq":"7,9,12","desc":"Shroud / radome / concealment enclosure","look":"Cracks, holes, displaced or missing panels, loose top cap.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"CM-CAM-10","tags":["CAMO"],"sec":11,"section":"Camouflage","rfq":"9,10","desc":"Flagpole items - finial, halyard, flag","look":"Finial / top cap missing or loose, halyard broken or slapping on pole, flag torn.","rating":"Low","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"CM-CAM-11","tags":["CAMO"],"sec":11,"section":"Camouflage","rfq":"9","desc":"Aesthetic design as approved","look":"Shape, colour, height or density differs from the approved design / drawings.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"CM-CAM-12","tags":["CAMO"],"sec":11,"section":"Camouflage","rfq":"8","desc":"Camouflage elements included in documents","look":"Camouflage materials (UV-stabilised, fire-retardant) not specified, or camouflage wind area not shown as considered in the structural analysis.","rating":"Medium","photo":false,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"CM-CAM-13","tags":["CAMO"],"sec":11,"section":"Camouflage","rfq":"7,10","desc":"Bird nests / debris in camouflage","look":"Nests, accumulated debris or waste within the crown, screen or shroud.","rating":"Low","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-ERT-01","tags":["ALL"],"sec":12,"section":"Earthing & electrical","rfq":"10","desc":"Structure earthing conductors","look":"Earthing conductor missing, cut, disconnected or corroded at the structure connection.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-ERT-02","tags":["ALL"],"sec":12,"section":"Earthing & electrical","rfq":"10","desc":"Bonding (feeders, cable ladder, fence, gate)","look":"Bonding straps missing or broken, loose lugs.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-ERT-03","tags":["ALL"],"sec":12,"section":"Earthing & electrical","rfq":"10","desc":"Earth bars and earth pits","look":"Earth bar missing, corroded or with loose connections; earth pit covers missing or broken.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GY-ERT-01","tags":["GUYED"],"sec":12,"section":"Earthing & electrical","rfq":"5,10","desc":"Guy wire earthing","look":"Guy earthing / bonding at anchors missing or disconnected.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-ERT-04","tags":["ALL"],"sec":12,"section":"Earthing & electrical","rfq":"10,12","desc":"Cable routing at ground / roof level","look":"Cables unprotected, trip hazards, damaged insulation, open trenches or trays.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-ERT-05","tags":["ALL"],"sec":12,"section":"Earthing & electrical","rfq":"10,12","desc":"Power cabinets / distribution boards","look":"Doors open or unlocked, exposed live parts, labels missing, signs of overheating.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GF-CMP-01","tags":["ALL_GREENFIELD"],"sec":13,"section":"Site compound / equipment area","rfq":"4","desc":"Fence","look":"Gaps, damaged or missing panels, broken posts, corrosion, insufficient height.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GF-CMP-02","tags":["ALL_GREENFIELD"],"sec":13,"section":"Site compound / equipment area","rfq":"4","desc":"Gate and lock","look":"Gate not closing, broken hinges, lock missing or not working, gate left open.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-CMP-01","tags":["ALL"],"sec":13,"section":"Site compound / equipment area","rfq":"4,10","desc":"Site ID and operator signage","look":"Site ID / operator sign or emergency contact missing or illegible; structure ID plate missing.","rating":"Low","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-CMP-02","tags":["ALL"],"sec":13,"section":"Site compound / equipment area","rfq":"4,10,12","desc":"RF and hazard warning signs","look":"RF warning signs or other hazard signs missing, faded or wrongly placed.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-CMP-03","tags":["ALL"],"sec":13,"section":"Site compound / equipment area","rfq":"4","desc":"Shelter / outdoor cabinets","look":"Damaged doors or panels, corrosion, roof leaks, missing seals, unsecured units, impact damage.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-CMP-04","tags":["ALL"],"sec":13,"section":"Site compound / equipment area","rfq":"4","desc":"Equipment plinths and steel platforms","look":"Cracked or spalled plinths, corroded or loose steel platforms, missing anchors.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GF-CMP-03","tags":["ALL_GREENFIELD"],"sec":13,"section":"Site compound / equipment area","rfq":"4","desc":"Ground condition, drainage and access","look":"Uneven or eroded surface, standing water, blocked drains, access road / path in poor condition.","rating":"Low","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GF-CMP-04","tags":["ALL_GREENFIELD"],"sec":13,"section":"Site compound / equipment area","rfq":"4","desc":"Vegetation","look":"Overgrown vegetation, trees or plants touching the structure or equipment.","rating":"Low","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-CMP-05","tags":["ALL"],"sec":13,"section":"Site compound / equipment area","rfq":"4,10","desc":"Housekeeping","look":"Debris, waste, stored materials or abandoned equipment in the compound / equipment area.","rating":"Low","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GF-CMP-05","tags":["ALL_GREENFIELD","STREETWORK"],"sec":13,"section":"Site compound / equipment area","rfq":"1,12","desc":"Adjacent works / encroachment","look":"Excavation, construction or heavy loads close to the foundation; structures built against the site.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-CMP-06","tags":["ALL"],"sec":13,"section":"Site compound / equipment area","rfq":"4,10","desc":"Generator / fuel tank (if any)","look":"Fuel leaks, no bund, corroded tank, generator enclosure damaged.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GF-SAF-01","tags":["ALL_GREENFIELD"],"sec":14,"section":"Safety","rfq":"10,12","desc":"Public access to compound / structure base","look":"Public can enter the compound or reach the structure base (open gate, gaps in fence, unfenced site).","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"GF-SAF-02","tags":["ALL_GREENFIELD"],"sec":14,"section":"Safety","rfq":"10,12","desc":"Climbing deterrent","look":"Ladder / step bolts reachable from the ground without a guard or locked anti-climb device.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BD-SAF-01","tags":["ROOF"],"sec":14,"section":"Safety","rfq":"10,12","desc":"Roof access control","look":"Roof door / hatch not lockable or left open; residents or public can reach the equipment area.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BD-SAF-02","tags":["ROOF"],"sec":14,"section":"Safety","rfq":"10,12","desc":"Edge protection","look":"Low or missing parapet / guardrail along the access route or next to equipment.","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"BD-SAF-03","tags":["BUILDING"],"sec":14,"section":"Safety","rfq":"10,12","desc":"Antennas close to accessible areas","look":"Antennas at low height facing accessible roof areas, windows or balconies at close range, with no barrier or sign.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"SW-SAF-01","tags":["STREETWORK"],"sec":14,"section":"Safety","rfq":"10,12","desc":"Traffic and pedestrian safety","look":"Pole or cabinet obstructing the footway, no impact protection at road edge, equipment too low over footway.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-SAF-01","tags":["ALL"],"sec":14,"section":"Safety","rfq":"10,12","desc":"Fall / trip hazards","look":"Open pits, missing covers, open trenches, cables across walkways, unprotected openings.","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-SAF-02","tags":["ALL"],"sec":14,"section":"Safety","rfq":"10,12","desc":"Falling-object risk","look":"Loose items at height (equipment, covers, cables, camouflage parts), especially above roads, footpaths or occupied areas (rate Critical if imminent).","rating":"High","photo":true,"type":"CHECK","options":[],"mand":true,"label":""},{"code":"AL-SAF-03","tags":["ALL_GREENFIELD","BUILDING"],"sec":14,"section":"Safety","rfq":"10","desc":"Fire safety items","look":"Fire extinguisher missing, discharged or out of date at shelter / cabinets (where provided).","rating":"Medium","photo":true,"type":"CHECK","options":[],"mand":true,"label":""}]};
+const APP_VERSION = "1.0";
+const LOGO = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAZABkAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCABVANsDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD9U6KKwPG3jzw/8OtDl1fxHqtvpOnx8ebO2Nx/uqOrH2FNJydkJtRV3sUPid8VPDfwg8Mvrvia++x2QcRoqLvklc/wovUnvUnw6+KHhj4r6ENW8L6rDqdoDtkCcSRNjO10PKn61+aP7X37QNt8dfHds2iyXH/CNaZD5Vqs67DJIeXk29s8AZ7Cup/YCl1zQ/jNosqb4dE8R2d7EEY4FykCq3nBe6rJ8gbud4FexPAKnh/aTdpdv0PEp5hKrifZwV4d/wBT9L6Kw/Ffjfw/4GsBe+INZstHtScCS8mWMMfQZ5P4VJ4V8YaJ440lNT0DVLXV7ByVFxaSB1yOoOOh9jXkcsrc1tD2uaN+W+psUUUVJQUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAZXirxPp3gvw3qeu6vcLaaZp1u9zcTOeFRRk18J6j8D/ix+2l4hXxlrl3D4J8GynOkW1+jSzi2P3XS3BUAsMHc7AnPTGK+hP2or+HXtb+GPw7m+e08UeII2v4QeJbW2HnPG3+yxVQfxr3xVCKFUBVAwABgAV1QqSw6Uobvr5HJUpQxDcZ6pdPM+T/BX/BOn4beFJEvvE2pap4t8geY8N/KlvZ8cktHGASPZmI9a0P2cLaP4pfGjxd8TrO0js/COlW//CK+GIYowkZhjYGeSNRwF3KqjHH3h2rf+NHiDVvjL4nn+EHgq7e0gCq3i3xBByNNtm5FtG3Q3Eo4x/CvJ9K57x34Dh+BXxB8FeKV+IMXgv4X6DZrp6eHlV2aYqp/dIoyHD8MzEFgR75GilKpdTk3J/P5fMzcYUrOEUor0Xz+RX/aY/ZFsPHfh/xF4wuPFWt3XiWzt5buAX1wps0jQF/ISIKAi4GAQc55JPNYv/BNbwrq2m/DrxLr92JItI1i9jGnI/AlWJWV5lHozNtB7+XXumneKvh/+0/4N1DTNN1k6xo5dF1C0tZXt5HTOfLkHDeW+CDjAYAjPUV6Rpum2mj6fbWNjbRWdlbRrFDbwIESNAMBVUcAAdqmVepGk8PPv16DjQpSrLEQ7dOvmWaxPG0OsXHhHV4vD95b6frb2zizursZihkx8rNweB16U/xlrzeFfCGua0sQuG02xnvBETgOY42fbntnbivI/Hgj+Kd38H9O15APDevpLf6jp6uVhu5ltBLDA/PzJuZ22nhvLGc1zRi3qdUpJaf1qeo+F/7Xm1XXLm81Kz1DSZpYf7NW1IJiUQoJQ5A5JkDkcnAIro68OHh/w78Jvjp4K0jwlaWuhQ+IrW+XUdKscRwyLDGrxTeUPlVgwZdwAyGIOcVS8KeCJ/jaNd8V+JPEfiG2iGq3lnpemaRqs1jBZ29vM0SkrEVLyOUZmZyfvAAACqcVv0JU/s9f6/zPe5nMcTsql2VSQo7n0rG8D6xqXiDwjpOpaxpb6JqlzbrJcae5y1u56ofpXJfATXNQ1r4G+F9T1G8lv9QksC8lzcNueRgWALHueBWt8G/FV943+FvhnXtTMZ1DULJJ5zEu1dx64HapatctSvY7OiuJ+EXi2/8AGnhW61DUTGbiPVb+zXyk2jy4bqSNOPXaoya7apas7MpO6uFFFeU6n8R/F3iXxtrnh/wHo+kzw6A0cOparrtzLFCbh0EgghWNGZiqMpZjgDcBg80JXBux6tXz942+IHiHTYPiq1tqk0J0rW9ItrIqF/cRyi18xRx0bzHzn+9XqPw68dzeMIdUs9T07+x/EOj3ItNRsVl81EcoHR43wN0bqwYEgHqCMivDPiGwa2+NmDnHiPQgfysq2hG0rP8ArUxnK8brz/I+o6851hPEDeLbu2t/GOmWYn1OwuLXTZGXz0tI1H2mLb1JkIOD2z1rp/iBrdx4a8CeI9XtFDXVhp1xdRAjILpGzLx9QK848Afs+eBr74a6QNX8P2WsavqNnFd32t3cQe+nuZEDvN55+dW3EkYI28AYxWcbJXZctXZHs1FeZ/Bu5fx98GrS216R9TDG70u4mkchrlIZ5INzMCDllQEkHqTVfwBaH4ffEzVPBFtcXMugTaXFq2mQXdw87WxEjRTxK7ksUyYmAJONxxxT5d12BT2fc1Pgn4g1DxJ4T1G61O6e7uI9b1K2R3AyI47uREXjsFUD8K9Ary/9nf8A5EjVf+xi1f8A9Lpq9QpT+JjhrBBTZJFiRndgiKCWZjgAepp1eS/H+0/4SOTwL4TuWcaLr+vJb6nGjFftFvHDLMYGI/hdo1DDuMjvSiruw5OyudF8NvEtvrFx4ghHi/SfE839ozTwRabcxytaWp2iOJwp6rg8+9dxXIL8JPCNvqmk6jY6DZaTfaXJvtp9MhW1YDaVMbGMDchB5Q5HA44rr6HZ7Arrc+ZPjC5u/wBtH4MWpOUhtLycD0PlTDP6CvWfjT411Hwx4fsdL8PGM+LPEV2ulaT5g3LDIwJe4Yd1ijV5D67QO9eV+P4jcft0fDIHkRaFeyfT5JR/Wuo1G+XXv2wdG06Vt0WgeFLi9hQ9p5544y31Ea4/4Ea6pq6j5R/VnJB2cvOX6I7vwN4K8P8AwU8CtZW8wgsrZXvNQ1O8fMtzKfmluJnP3nY5JP0A4AFfIvh3U/DH7cH7QesxeKbqdfB2gWJGi6RHeNbNdOZNrTMVIY8DOAf4lz0r6Y/ae+Hmt/FH4L674f8AD1ylvqkwSRElk8tJwjBmjZuwIHU8ZAzxX5dfC/4SeLvih8QP+EX8Kw51OBz9rvlkP2exjDYMski9sg4CnLHp3I7MJSpypTqSnZ9+3/D7HFjKtWFanThDmj27/wDDbn25onhLwj+yn4y1LR/hgmoeOPiL4nRIbTQbi8V4dPt0YkyTuqgxxKWyWfLHAA9/rS1uxmG2uJoP7R8kSSQxP+BYA87c8Zrzf4Cfs+eHvgJ4ce004vqWt3gV9T1y7Gbi8cep/hQfwoOB7nJPnn7QvwW1iz8VzfFbwl4s1LTPFa/Y9Kgs9qParHNKlsx2kZJ/e78E4yg4rgbjVn70vm+vqehFSpQXLFei6eh7r4otLXxl4Y8SaDbXkEk9xZzWMyxyBmhaSNlG4A5B+bPNeMab8Rvhhrfw30rwX8SLyx0HVdKtoLa70rXJWs5oJ4VC+ZFISpIyMrJG3Q9a774OfAjQPgkmtyaTfarqV5rMqXF/e6vd+fJK6gjOcAD7zH8azbj41aV4haW50zwRr/izQbaRo21uysIpLZipIYwh3EkqggjdGpBwcZqE1stvuNGnvLf7zzXwlF8MW+OXgIfDi7j1m5Rr+TU7+K5uL5wn2UrGHuJC3y5JAXdjJ6c16B4l8G+Kvh6niLU/DnjXSNA8KTyT6reQ61pZuDZO2XmaKRZUG1jltrg4JOPSu+0Txto+p65baNYRypJPpaavGTAYl8h3KDKsAytkfdIBFcz4r8GeBviH8To9N8QaXPq2radp0N+tvczymxMZmkVC0G/y3cMjfeQ8Yo5n1Fyq2hlfBTUI/Bn7LvhzUddkGnQWmh/bLh7n935aFWfLZ6HBHHvitv4AQSaH8BvBf9pL9haLR4ZphOdnlKU3/NnpgHnPSsZNL+G3xo+ImrRXdhNrGqeGZI7doLyWX7CzKx+dIN3lSbHDIWKnDLjsKwfiNrfhL4heI72y1f4e+LvFll4euWsbiTTlLWLSbUkZWgWdfOADLwUbqQAaGm9H6grKzXoZvwV0v4kap4IOueGPFOi22iavqN/fWdhq+itKY4ZLqVo3SSOVCwdSH+YE/N1xXef2P8aP+ho8F/8Agkuf/kmu18M+KNB1fwlb6vpFxAmhxwnayp5SwJGCGRkIBQptIKkArjGKrfDn4i6T8UfDMeuaMZxaPI0ZjuojHKpHTcp6ZUqw9VYHvSk5NttDjGKSSf4nJHRfjQwI/wCEq8GJnjcNDuSR74+01zfhbSvGHwH1DXEk0TVPiTa69d/2pNqmlm3hnS7ZFWVHhd0CxnYpUqxwOD0yfZfE/iOx8H+HdS1vU5fI0/T4HuJ3xkhVGTgdyegHckVjW/xN0i6+GsvjeNbn+yYbKS9kiaLbOgjBLoyE8OpVlI9RQnK22g2o331R5n4Z8D/FefXvEfjG31TRPCd54huI3fQNR0/7ebeGKJYoi80UqZkwCSoyozgHqa2T8BLhvh5rWjXGvm+8Qa7qsGr6prM1sFWaVJYW2pErfIgSFY1XJwBkknOfUjrEA0P+1TuFr9n+1dPm2bd3T1xWP4J+Iuh+PvBNr4q0y6xpE8JmZ7geW0IX74kB+6Vwc/n0pc0nqHLBe6b9/YwanY3FncxiW2uI2iljPRlYYI/I15DaeB/ix4f0aPwxonijw4uhwRC1tNXvbGZ9RtoAMINgcRyOq4AYkA4BK9a7HwZ8XPD3jjwPe+LbGaWDQ7N7hZLi7j8v5YSd8mD/AAkDcD3GKm8M/E7R/FngCTxfZi5TTYoZZpYZ4tk8flgl1ZD0b5enuKEpLQb5ZWZgRfD/AMV+B/C2geHfAGr6PY6bptsYpn12ylupp5CcmTckqAFiWZuDkselVdA8AePpviTo3ibxP4g0C6g060urT7PpOmTQSSrNsOGZ5nGA0anp603TP2h7K5sbPU9R8H+KtC0G6SOVdZv7KP7NGjgFHkMcjMinI+YrgZ5xVzxZ8bW8HSapLfeCfEx0rTg7zaukdsLUxqMmQM04O3Htn2p+8L3P6uZ1n8O/iL4PudTtfCfiXw5Dodzf3F/DBqmkTSzwtNIZHQuk6hgGZsHAOOO1Wv7H+NH/AENHgv8A8Elz/wDJNWbz452EVpoUdn4e13U9f1ixXUYvD9rbJ9rt7dukk+5wkIzx8zgk5AyQcbXhD4n6f4olvrO6sr/w3q9jF59zpusxrDKkX/PUMGZHjyCNysQO+KT5nqCUVp/mc5/Y/wAaP+ho8F/+CS5/+SawfGPw2+LvjPT7WC48W+EbW4s7qO9s7u30W5ElvOh+V1zcEHgsCCCCGIrctv2gbXUbc6np3g/xTqXhfkrr9tYoYJEH/LVIy4mePHO5YyCORkV0Xij4t+HvDHh7StWE0+rrrDKmlWmkwm4uL9mXcBEg64UFiTgKASSKacou6/QTUJKz/UxdH0f4vw3tl/afifwjc2aSJ9pFvotxHJIgPzBSbghSRnBwQPSvTq4Lwz8XLfWdct9G1fw/rXhLVLoMbSHWYUVLraMssckbuhYDkqSGxzjg13tRK/U0jbofOviuEy/tzeBmwcReFr1//H9v/s1c38YPEy/B79sbwV4r1J/J8P6/pLaPcXDcJE3mHknsATCT7Fq9A1HS5b39sjRrtUJhsfBlwZH7KZLtFUfU7X/I11Px2+CmkfHbwLPoGpubW4RvPsr9F3PbTAEBgO4IOCO4Prg12QqRjNKezVmcU6c5Qk4bp3X9eZwf7WHxG1W10bSPhz4MZZvG/jSQ2drtbi2tsfvp2I6KF3c+gbviu++BnwT0H4D+BLXw9osfmzHEt9qEijzr2cj5pHP6BeijAFfAXwc1X4sfD/4j6zr3h7wlcfE6TQi/hs6jsadYUQglIfnDKCNvY8cV9FW/jX9qL4tEWmmeEdK+GFi/yyanq7h5kHcpGCzE/gv1FaVqPIvZqasvPr6bmVGv7Ruo4Pmfl09dj6E+Jvxf8JfB/Q31XxVrNvpkAUlImYGWX2ROp/l718uXn7cXi7xxLJceDfg7qniLwxDIsn2ye0nkD7GDK4KJtyCoIwWwQK9b+Hn7H/hTw9qi+IvGVzc/Enxkx3vq3iD97HG3/TGA5RB6E5b3r3cCO2hwNsUUa/RVA/kK5lOnT2jzev8AkjqlCrU3ly+n+b/yPFvhd8cLD9pb4X+Jk0aCfRtfhtZbK5sZz89vNJEwRg3GVJzzgEFSCOKh0fxbp03wo8Ow6H8QNM8BDQ7OO21KC7ggkkt2ijCNDIkrDyypU89+2QRXH/saWsWveMfjN42s4wmk6x4ja2smUYWRYt7O4+rTY+oNfQOp/DvwrresR6tqHhrSL7VIyCl7c2MUky46YcqTx9adblhUcYrQVHnnTjKT1/rU8G8HXfjL4keMfDeo23iVPDes3Xg6O6urk6SkzTqbyQJiNyNgIw3HXIp+ueINd+EnxA8W6hrGuf8ACW68fC1lDpoSxjtnmuZb2eO3gWNWw2ZCOSemegFfSAsbYXpvBbxC7MYhNwEHmFAchd3XGSTjpzUFzoWm3l7HeXGn2s95GUKXEkCtIpUkrhiMjBZsem4+tZe012NfZ2W583aFd618MLXwReXPgTXNFsdCDWmta1fXVm6TQXDAzzSCKZmz55WXocfPXefDjxn4f8Lar8TDrOu6ZpWPE08xF5eRxEJ9mtxuwzDjg8+1equLbW4b+yu7Iy2wJglju4QYp1KgnAPDL82PqCKx7v4YeDr/AFRtSufCeh3GoswdruXToWlLDgEuVzkYHftQ5pqzQKDTumfOeteKLrxL4c8SWGg6bqF/a/EPxE7adZWWyGe40qGGFby6TzWRUSXy3UMxGfNVudwr0LwX4o1LRfixt1HwdqPg3RvElvHbRLfT2zxtfQIdgQQyPt3QLjnGfJUCvZ/7OtPtsd59lh+1xxmFJ/LHmKhIJQN1CkgHHTgUt1YW18YDc28VwYJBNEZUDeW4zhlz0IyeRzzRz9LB7O2tzxv4969dax4j8M+C9M0O+8TN5ya5q2n6e8KMbSBx5SO0rooV5wnGckRsMda5DXPEmpWXhn4s6Lq3hu+8KW+t6Ne6xplrqM9vIXlEO27VDFI4+8UkwSDmRzX0XbR2p1m9lSw8q8EcaSXhgC+cvzFVD9WC5PHYt70/UtE07WQo1Cwtb4KroBcwrJhXG1wMg8MOCO460Rny6WCUObW5xv8Awleh3Hw5ezh1nTprs6QyCCO7jZyRAcgAHJ6GvL/C3wf1LxT4B8FW+mX8Nl4P8QaRp8nie0ywkuBFbpgQ44HnALHKeMovHJr2XT/hR4J0m7S6sfB+g2dygIWa30yFHXIIOCFyMgkfjWtqV/b+GNLi8mxke2iXy47eyjUBFVCQoXIAHyhQPUgUlKytEbhfWR8x6pq0l34cv/AWkaRda3LrPi/VJb3TNLaJH/sy3ugZlzI6KiuTHFyejsADXSzeK9S0zU/HFrq/hTUPCOm+JdGubm1i1Ce3dXvYbdhKEMMjgbogjYOMmNj6171p2i6baTG+tdMtrO6mU75Y4FSQhm3sGIGTliSfU81NqGkWOrLGt9ZW96sZLILiJZApKlSRkcZVmH0JHeq9prsT7PTc+Ybv/hPNU+F3g7w54n1Lw/oXgLX9NtbK61jTLad57eJokCQOZH2xmRfk84ggE9BkGu18UeIdC+IvxBi8MXmsadZeC/C8sc2oR3N5Gn9pXyYaK2wW5ii4d88F9i/wtXtNxpFjd6Y2nT2VvNp7RiI2kkStEUAwF2EYxjtiubufg/4DvbiSe48FeHp55GLvLLpUDMzHqSSmSaXOnuiuRrZnJeHfEGiaB8ZvFNxf6nZxf8JLa2NxpN5JMoiuoYY2R4o5M4JVyW2g5xJn1rlfjFcL8W/FN1oPg65TUrvS/DuqxaldWTho42uIlSG1Lrx5jspbbnICZOMivab/AMC+G9V0GHQ7zQNMutGhAEWny2cbQRgdNqEbRj2FXNB8O6V4W05LDRtNtNJsUOVtrKBYYwe52qAM0KdnzLcHC65W9DkfD/xb8DwfD+11n+39M03SbS1VZUmnWNrUooBiZCcq6427MZyMYrybwDJH4P1PwF4s8UJ/Ymi30WsxWX29fKTTjd3iz2ySE8Rl4VK84wfl6nFe1w+AvCOu6uPEVx4R00a0krgXt5p0QudyMVD7iM84yGz0Irpb/T7XVbOW0vbaG8tJl2yQXEYdHHoVPBH1pKSWiWgOLdm2ePfGLx/4e1nVfBXhfS9b0678Q3fiCxuYY4bpGa3iik8ySU4PGUVkA6sXwM817TXn+l2fgbw5od3cab4Y07TrKDVUs5IrXToo83K3CxI+ABnDsCG6jqK9ApSeiRUVq2c5deLNNsvH+n+HDGDq9/p816JAACIYnjXBPU5MvA9jW3e3CwwyKHUTGN2RCeWwOcDvjI/OvjP9vDXfFHwp+IPgX4ieHbt7Iw282nm4IDRh927Y4PBDqx4PXafStL9jXxT45+PfjjV/ib4uuA+j2Fi2jaVHDH5dvJI7q87ovRsBEUt3JI7V1Sw1qKrKSt+Nzkjib1nQcXdfdYqf8E6fG9te2Hjnw7cTKuqnUjqixscNIjqEcj12sgz/ALwr7Nr8jvi7o/iP9nL9oDWv7Iu7jSbu3u3u9Pu4Tt328hLJ7EYJUg8ZBFeoaN/wUf8AiDYWSw32i6JqcwGPtDxyRsfchWx+leliMBOvL21HVS1PLw2YQoR9hX0cdD9ICQASTgDua+Rf2nP2lZ/Emow/CP4Wyrq3i3XZfsE97btmK1VvvgMPRdxZuiqD3r5d8e/tZfFf43XcPh60uZof7QbyYdF8PxFZLkn+HIJZh65OB1OBX2P+x9+yivwP0uTxH4kWG68dalFsk2EPHp0J58iNu7E4Lv3IAHA55ZUI4Nc1V3n0X6s64YiWNfLSTUOr/RHsPwq+Gtn8HvhhpHhPSP3o0212mZhg3E5y0kje7OSfxrgvAf8AaFrq2gyNqOjpq97Lm+ZtcuLm7ucKzSoYGjCgqc4xtCYAHHB9yqrFpVlBey3kVnbx3coxJcJEokcehbGTXmcz1uepyrS3Q8x8NWD6bpOg68b67utY1LVBDc3U8zsJImkkAj2Z2hVUKBgfw56kk4es3Gm6L4LudWn1+aPxxPNslMd6xm80y/NAsO7ARV4wFwFG73r3ERIFVQihVOQMdK4nWfAGoa/qrfbNRsP7MkmWSUxacFvZY1YMIGm342ZABIXJAxxnNUpdxOPYyPFLXer3c+mHULq2tZ/Etvay/Z5SjNB9kR3iDA5UMQc4IPJxVLxXb3OnWGp6Jps4t9Jg1C0SRbi/lt0jgeMs6GcBnRGcKDjHDEZANeteUmc7FzndnHfpmkkt4pkkSSNHSQYdWUEMOmD60uYfKeIySakPDmp2FhqGjx6VHeWkE0Fhrc7x2yEsZVe5Me6NX/dAhegLcrmpo/tp8Na3ptlq9jZWX2nTrQR6Fqct3JbGW5RZQJXVSm6NsADJGSeM17FbaXZ2VmbS3tIILUggwRRqqc9flAxzS2emWenW4t7S0gtoAdwihjCKD1zgDGaOYXKeaeIIJ7X+29D02/utNtY5NKtIWglYvDHJJtkCMSSGZcjd15z1p+v2A8PLq+haXd3OmaUbexmmlS4dpLeN7l0ndHYkrmNeueOW616cYkJJKKSSCTjrjpVfUrSW6sp47acWlzIm1ZzGJNp7ZU9R7e9HMPlPOtEuNE0v4k6Lo/hvVXlszYXc11ZQ3bXEIYGHYzMWbD4LcZ5BzjubfxD0/Tn8WaPqHiDTbnV9EgtZo47eGxkvI47lmTDtFGrHO0MAxXAyeRmtTwv4HudL1ttV1G5sHljheC2tdLsfssEQdlMjkFmLO2xBnIAC4A5JrsaL6gloea/Cnxrodt8PtHivdcsLe5WNw8NzeRrIn7xsKwLZBAwMdq63/hPPDP8A0MWk/wDgdF/8VUr+DtAkdnfQ9NZ2JLMbSMkn1PFJ/wAIX4e/6AWmf+Acf+FJtN3Gk0rEf/CeeGf+hi0n/wADov8A4quVuvi7oEXiTXIG8TaUum2OmRzFhdxfLMTISAc8naE4HqPWuu/4Qvw9/wBALTP/AADj/wAKsL4b0lIool0uyWOJt8aC3TCN6gY4PvRdIGmzzLw/8QbfVY/hrB/b8F3ftbveaoIrpXKxrZvvebacKBI6D5sfNj0rd0/xvoOj+LLm1Hiixm027tjdobjU0kEUqvh1VmYlVIdCF6DBxiu0TRdORrllsLZWuRiciFQZR6Nx8341T/4Qvw8P+YDpn/gHH/hTuhWZ5vafE/Q/+FYahO+qafq891d3MMNpLqiwmVJbp0jy+SyJtZTkDheQKq+CvGPhvw9q2kQ6dqVhpdjdm7t7+w/tYT28UsPSWJnbIDEEZwNwIyMivWLvwvo1/L5l1pFjcyYA3zWyMcDoMkVB/wAIV4eH/MB0z/wDj/8AiafMuwuV9zyW38Y6Hq/hK4s7HVbO9vNS8Wq1pbW86vJMv9opIWCg527EZ89NozXulVI9KsorpblLO3S5VPLWZYlDhf7oOM49qt1LdykrFHWdD07xFp8lhqun2up2MmN9teQrLG2OmVYEGprCwtdLs4bSytorS1hUJHBAgREX0VRwB9KKKko88+Nv7PnhH49aPDaeIraWK8ts/ZNTsnCXNvnqASCCp4yrAivnSy/4Ji+H0vg954/1qeyB5hgs4IpCPTeQw/ELRRW8K9WmuWEmkc88PRqy5pxTZ9G/CH9njwH8D7Z18K6IkF7Ku2fU7pjPdzD0aVucf7IwPavSaKKxbcndm6SirIKKKKQwooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooA//Z";
+const STATUSES = ["OK", "Defect", "Not visible", "Rigger required", "N/A"];
+const STATUS_SHORT = {"OK":"OK","Defect":"Defect","Not visible":"Not visible","Rigger required":"Rigger req.","N/A":"N/A"};
+const RATINGS = ["Critical", "High", "Medium", "Low"];
+const EQ_CATS = ["Antenna", "RRU", "MW dish", "Other"];
+const EQ_BASIS = ["Counted", "Partly counted", "Rigger required"];
+const NOT_COUNTABLE = "Not countable without rigger access";
+
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const cls = s => s.replace(/[^A-Za-z]/g, "");
+const today = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); };
+
+function setting(k, v) {
+  try { if (v === undefined) return localStorage.getItem("prs_" + k) || ""; localStorage.setItem("prs_" + k, v); } catch (e) { return ""; }
+}
+function toast(msg, ms = 2500) {
+  const t = document.createElement("div"); t.className = "toast"; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), ms);
+}
+
+/* ---------------- storage (IndexedDB) ---------------- */
+let db;
+function openDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open("prs_field", 1);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      d.createObjectStore("sites", {keyPath: "uid"});
+      d.createObjectStore("photos", {keyPath: "key"}).createIndex("uid", "uid");
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function tx(store, mode, fn) {
+  return new Promise((res, rej) => {
+    const t = db.transaction(store, mode); let out;
+    const r = fn(t.objectStore(store));
+    if (r) r.onsuccess = () => { out = r.result; };
+    t.oncomplete = () => res(out); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+  });
+}
+const dbAll = s => tx(s, "readonly", st => st.getAll());
+const dbGet = (s, k) => tx(s, "readonly", st => st.get(k));
+const dbPut = (s, v) => tx(s, "readwrite", st => st.put(v));
+const dbDel = (s, k) => tx(s, "readwrite", st => st.delete(k));
+const sitePhotos = uid => tx("photos", "readonly", st => st.index("uid").getAll(uid));
+
+/* ---------------- library helpers ---------------- */
+const typeOf = code => LIB.types.find(t => t.code === code);
+function itemsFor(typeCode) {
+  const t = typeOf(typeCode); if (!t) return [];
+  const tags = new Set(t.tags);
+  return LIB.items.filter(i => i.tags.some(g => tags.has(g)));
+}
+function sectionsFor(items) {
+  const m = new Map();
+  for (const i of items) { if (!m.has(i.sec)) m.set(i.sec, []); m.get(i.sec).push(i); }
+  return [...m.entries()].sort((a, b) => a[0] - b[0]).map(([no, its], idx) => ({no, idx: idx + 1, name: its[0].section, items: its}));
+}
+
+/* ---------------- current site ---------------- */
+let cur = null, curItems = [], curSections = [], photoURL = {};
+const val = code => (cur.values[code] ||= {});
+/* Every change is written straight away. Writes are queued so they land in order;
+   if a write is already waiting in the queue it will pick up the latest state, so no extra write is added. */
+let saveChain = Promise.resolve(), savePending = false;
+function saveNow() {
+  if (!cur) return saveChain;
+  cur.updated = new Date().toISOString();
+  if (savePending) return saveChain;
+  savePending = true;
+  const site = cur;
+  saveChain = saveChain.then(() => { savePending = false; return dbPut("sites", site); })
+    .catch(e => toast("SAVE FAILED: " + e.message, 6000));
+  return saveChain;
+}
+const scheduleSave = saveNow;
+
+async function loadSite(uid) {
+  if (cur && cur.uid === uid) return true;
+  await saveChain;
+  Object.values(photoURL).forEach(u => URL.revokeObjectURL(u)); photoURL = {};
+  cur = await dbGet("sites", uid);
+  if (!cur) return false;
+  curItems = itemsFor(cur.type_code); curSections = sectionsFor(curItems);
+  for (const p of await sitePhotos(uid)) photoURL[p.ref] = URL.createObjectURL(p.blob);
+  return true;
+}
+
+/* ---------------- validation / stats ---------------- */
+function photosOf(site, code) { return site.photos.filter(p => p.item === code).map(p => p.ref); }
+function isAnswered(site, it) {
+  const x = site.values[it.code] || {};
+  if (it.type === "CHECK") return !!x.status;
+  if (it.photo && it.mand) return photosOf(site, it.code).length > 0;
+  return String(x.value ?? "").trim() !== "";
+}
+function validate(site) {
+  const items = itemsFor(site.type_code), errs = [], warns = [];
+  for (const it of items) {
+    const x = site.values[it.code] || {};
+    const at = {code: it.code, sec: it.sec};
+    if (it.type === "CHECK") {
+      if (!x.status) { errs.push({...at, msg: `${it.desc}: no status`}); continue; }
+      if (x.status === "Defect") {
+        if (!x.rating) errs.push({...at, msg: `${it.desc}: defect without rating`});
+        if (it.photo && !photosOf(site, it.code).length) errs.push({...at, msg: `${it.desc}: defect without photo`});
+        if (!String(x.comment || "").trim()) warns.push({...at, msg: `${it.desc}: defect without comment`});
+      }
+    } else if (it.mand) {
+      if (it.photo) { if (!photosOf(site, it.code).length) errs.push({...at, msg: `${it.desc}: photos required`}); }
+      else if (!String(x.value ?? "").trim()) errs.push({...at, msg: `${it.desc}: required`});
+    }
+  }
+  const eqSec = items.find(i => i.sec === 10) ? 10 : null;
+  if (eqSec) {
+    if (!site.equipment.length) warns.push({sec: 10, code: "", msg: "Equipment table is empty"});
+    site.equipment.forEach((e, n) => {
+      if (e.qty_found === "" && e.count_basis !== "Rigger required") warns.push({sec: 10, code: "", msg: `Equipment row ${n+1} (${e.label || e.category}): quantity found missing`});
+      if (e.qty_lc === "") warns.push({sec: 10, code: "", msg: `Equipment row ${n+1} (${e.label || e.category}): quantity on LC missing`});
+    });
+    const method = (site.values["AL-EQP-01"] || {}).value;
+    if (method === NOT_COUNTABLE && !items.some(i => i.sec === 10 && (site.values[i.code] || {}).status === "Rigger required"))
+      warns.push({sec: 10, code: "", msg: "Count method is 'not countable' but no equipment item is set to Rigger required"});
+  }
+  return {errs, warns};
+}
+function stats(site) {
+  const items = itemsFor(site.type_code);
+  const counts = {Critical: 0, High: 0, Medium: 0, Low: 0}, st = {};
+  let answered = 0;
+  for (const it of items) {
+    if (isAnswered(site, it)) answered++;
+    const x = site.values[it.code] || {};
+    if (it.type === "CHECK" && x.status) st[x.status] = (st[x.status] || 0) + 1;
+    if (x.status === "Defect" && x.rating) counts[x.rating]++;
+  }
+  const overall = RATINGS.find(r => counts[r] > 0) || "";
+  return {total: items.length, answered, counts, st, overall};
+}
+function chips(counts) {
+  return RATINGS.filter(r => counts[r]).map(r => `<span class="chip ${r}">${counts[r]} ${r}</span>`).join("");
+}
+
+/* ---------------- router ---------------- */
+const app = $("#app");
+window.addEventListener("hashchange", route);
+async function route() {
+  const h = location.hash.replace(/^#\/?/, "");
+  const [path, query] = h.split("?");
+  const parts = path.split("/").filter(Boolean);
+  const q = new URLSearchParams(query || "");
+  window.scrollTo(0, 0);
+  try {
+    if (!parts.length) return renderHome();
+    if (parts[0] === "new") return renderNew();
+    if (parts[0] === "site" && parts[1]) {
+      if (!(await loadSite(parts[1]))) { location.hash = "#/"; return; }
+      if (parts[2] === "sec") return renderSection(Number(parts[3]), q.get("focus"));
+      if (parts[2] === "review") return renderReview();
+      return renderSite();
+    }
+    location.hash = "#/";
+  } catch (e) {
+    app.innerHTML = `<main><div class="card issue err">Error: ${esc(e.message)}</div><a class="btn" href="#/">Home</a></main>`;
+    console.error(e);
+  }
+}
+function bar(title, sub, back) {
+  return `<header class="bar">${back ? `<button aria-label="Back" onclick="location.hash='${back}'">&#8249;</button>` : ""}
+    <h1>${esc(title)}${sub ? `<div class="sub">${esc(sub)}</div>` : ""}</h1>${LOGO ? `<img class="logo" src="${LOGO}" alt="GME">` : ""}</header>`;
+}
+function brandBar(title) {
+  return `<header class="bar brand">${LOGO ? `<img src="${LOGO}" alt="Ghada Al Marzooq Engineering">` : ""}<h1>${esc(title)}</h1></header>`;
+}
+
+/* ---------------- home ---------------- */
+async function renderHome() {
+  await saveChain;
+  const sites = (await dbAll("sites")).sort((a, b) => (b.updated || "").localeCompare(a.updated || ""));
+  const rows = sites.map(s => {
+    const t = typeOf(s.type_code), stt = stats(s);
+    const pct = stt.total ? Math.round(100 * stt.answered / stt.total) : 0;
+    return `<div class="card list"><a class="item" href="#/site/${s.uid}">
+      <div class="grow"><div class="desc">${esc(s.site_id)}</div>
+      <div class="muted">${esc(t ? t.label : s.type_code)} &middot; ${pct}% &middot; ${esc((s.updated || "").slice(0, 10))}${s.exported_at ? " &middot; exported" : ""}</div>
+      <div>${chips(stt.counts)}</div>
+      <div class="progress"><div style="width:${pct}%"></div></div></div><div>&#8250;</div></a></div>`;
+  }).join("");
+  app.innerHTML = brandBar("PRS Site Inspection") + `<main>
+    ${rows || `<div class="card muted">No sites on this phone yet. Tap <b>New site</b> to start.</div>`}
+    <h2>Settings</h2>
+    <div class="card"><div class="lbl">Your name (pre-filled as inspecting engineer on new sites)</div>
+      <input type="text" id="engSel" value="${esc(setting("engineer"))}" autocomplete="name">
+      <p class="muted">Data is stored on this phone only. Export each site after the visit and send the file to the office.
+      Do not clear browser data before exporting.</p>
+      <p class="muted">App ${esc(APP_VERSION)} &middot; Library ${esc(LIB.version)}</p></div>
+  </main><nav class="bottom"><a class="btn primary" href="#/new">+ New site</a></nav>`;
+  $("#engSel").onchange = e => setting("engineer", e.target.value.trim());
+}
+
+/* ---------------- new site ---------------- */
+async function renderNew() {
+  app.innerHTML = bar("New site", "", "#/") + `<main><div class="card">
+    <div class="lbl">Site ID <span class="req">*</span></div>
+    <input type="text" id="sid" autocapitalize="characters" autocomplete="off" placeholder="e.g. BH-0123">
+    <div class="lbl">Structure type <span class="req">*</span></div>
+    <div class="seg" id="types">${LIB.types.map(t => `<button class="opt" data-t="${t.code}">${esc(t.label)}</button>`).join("")}</div>
+    <p class="muted" id="tdesc"></p></div></main>
+    <nav class="bottom"><button class="btn primary" id="create">Create site</button></nav>`;
+  let typeCode = "";
+  $("#types").onclick = e => {
+    const b = e.target.closest("button"); if (!b) return;
+    typeCode = b.dataset.t;
+    $("#types").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+    $("#tdesc").textContent = typeOf(typeCode).desc + " - " + itemsFor(typeCode).length + " items";
+  };
+  $("#create").onclick = async () => {
+    const sid = $("#sid").value.trim().toUpperCase();
+    if (!sid) return toast("Enter the Site ID");
+    if (!typeCode) return toast("Choose the structure type");
+    const existing = (await dbAll("sites")).find(s => s.site_id === sid);
+    if (existing && !confirm(`Site ${sid} already exists on this phone. Create another copy?`)) return;
+    const uid = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    const site = {uid, site_id: sid, type_code: typeCode, created: new Date().toISOString(), updated: new Date().toISOString(),
+      library_version: LIB.version, values: {}, photos: [], equipment: [], next_photo: 1, exported_at: ""};
+    site.values["AL-SD-01"] = {value: sid};
+    site.values["AL-SD-03"] = {value: typeOf(typeCode).label};
+    site.values["AL-SD-08"] = {value: today()};
+    if (setting("engineer")) site.values["AL-SD-09"] = {value: setting("engineer")};
+    await dbPut("sites", site);
+    try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+    location.hash = `#/site/${uid}`;
+  };
+}
+
+/* ---------------- site overview ---------------- */
+function renderSite() {
+  const t = typeOf(cur.type_code), stt = stats(cur), {errs} = validate(cur);
+  const secRows = curSections.map(s => {
+    const done = s.items.filter(i => isAnswered(cur, i)).length;
+    const c = {Critical: 0, High: 0, Medium: 0, Low: 0}; let rig = 0;
+    s.items.forEach(i => { const x = cur.values[i.code] || {}; if (x.status === "Defect" && x.rating) c[x.rating]++; if (x.status === "Rigger required") rig++; });
+    const complete = done === s.items.length;
+    return `<div class="card list ${complete ? "done" : ""}"><a class="item" href="#/site/${cur.uid}/sec/${s.no}">
+      <div class="grow"><div class="desc">${s.idx}. ${esc(s.name)}</div>
+      <div class="muted">${done} / ${s.items.length}${s.no === 10 ? ` &middot; ${cur.equipment.length} equipment rows` : ""}</div>
+      <div>${chips(c)}${rig ? `<span class="chip blue">${rig} rigger</span>` : ""}</div></div><div>${complete ? "&#10003;" : "&#8250;"}</div></a></div>`;
+  }).join("");
+  const pct = stt.total ? Math.round(100 * stt.answered / stt.total) : 0;
+  app.innerHTML = bar(cur.site_id, t ? t.label : cur.type_code, "#/") + `<main>
+    <div class="card"><div class="row"><div><b>${pct}%</b> complete <span class="muted">(${stt.answered}/${stt.total})</span></div>
+      <div style="text-align:right">${stt.overall ? `Overall: <span class="chip ${stt.overall}">${stt.overall}</span>` : `<span class="muted">No defects</span>`}</div></div>
+      <div class="progress"><div style="width:${pct}%"></div></div>
+      <div style="margin-top:6px">${chips(stt.counts)}${stt.st["Rigger required"] ? `<span class="chip blue">${stt.st["Rigger required"]} rigger required</span>` : ""}</div>
+      <div class="muted" style="margin-top:4px">${cur.photos.length} photos &middot; ${errs.length} open issues</div></div>
+    ${secRows}
+    <h2>Site file</h2>
+    <div class="card"><button class="btn danger small" id="delSite">Delete this site from phone</button></div>
+  </main><nav class="bottom"><a class="btn primary" href="#/site/${cur.uid}/review">Review &amp; export</a></nav>`;
+  $("#delSite").onclick = async () => {
+    if (!cur.exported_at && !confirm("This site has NOT been exported. Delete anyway?")) return;
+    if (!confirm(`Delete ${cur.site_id} and all its photos from this phone? This cannot be undone.`)) return;
+    await saveChain;
+    for (const p of await sitePhotos(cur.uid)) await dbDel("photos", p.key);
+    await dbDel("sites", cur.uid);
+    cur = null;
+    location.hash = "#/";
+  };
+}
+
+/* ---------------- section ---------------- */
+function renderSection(no, focus) {
+  const pos = curSections.findIndex(s => s.no === no);
+  if (pos < 0) { location.hash = `#/site/${cur.uid}`; return; }
+  const s = curSections[pos], prev = curSections[pos - 1], next = curSections[pos + 1];
+  const dataItems = s.items.filter(i => i.type !== "CHECK"), checkItems = s.items.filter(i => i.type === "CHECK");
+  app.innerHTML = bar(`${s.idx}. ${s.name}`, cur.site_id, `#/site/${cur.uid}`) + `<main id="secMain">
+    ${dataItems.map(cardHTML).join("")}
+    ${no === 10 ? `<div class="card" id="eqCard">${eqHTML()}</div>` : ""}
+    ${checkItems.map(cardHTML).join("")}
+    ${checkItems.length ? `<button class="btn small block" id="allOk">Set unanswered items in this section to OK</button>` : ""}
+  </main><nav class="bottom">
+    ${prev ? `<a class="btn" href="#/site/${cur.uid}/sec/${prev.no}">&#8249; ${esc(prev.name)}</a>` : `<a class="btn" href="#/site/${cur.uid}">Site</a>`}
+    ${next ? `<a class="btn primary" href="#/site/${cur.uid}/sec/${next.no}">${esc(next.name)} &#8250;</a>` : `<a class="btn primary" href="#/site/${cur.uid}/review">Review &#8250;</a>`}
+  </nav>`;
+  const main = $("#secMain");
+  main.addEventListener("click", onCardClick);
+  main.addEventListener("input", onCardInput);
+  main.addEventListener("change", onCardInput);
+  const allOk = $("#allOk");
+  if (allOk) allOk.onclick = () => {
+    const todo = checkItems.filter(i => !(cur.values[i.code] || {}).status);
+    if (!todo.length) return toast("All items already answered");
+    if (!confirm(`Set ${todo.length} unanswered item(s) to OK? Only do this if you inspected them.`)) return;
+    todo.forEach(i => { val(i.code).status = "OK"; refreshCard(i.code); });
+    scheduleSave();
+  };
+  if (focus) {
+    const el = document.getElementById("c-" + focus);
+    if (el) { el.scrollIntoView({block: "center"}); el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 2000); }
+  }
+}
+const itemByCode = code => curItems.find(i => i.code === code);
+
+function photoStrip(it) {
+  const refs = photosOf(cur, it.code);
+  return `<div class="photos">${refs.map(r => `<button class="thumb" data-act="view" data-ref="${r}"><img src="${photoURL[r] || ""}" alt="${r}"><span>${r}</span></button>`).join("")}
+    <button class="addphoto" data-act="photo">&#128247;<br>Photo${it.photo ? "" : ""}</button></div>`;
+}
+function cardHTML(it) {
+  const x = cur.values[it.code] || {};
+  const head = `<div class="code">${esc(it.code)}${it.rfq ? ` &middot; RFQ ${esc(it.rfq)}` : ""}</div>
+    <div class="desc">${esc(it.desc)} ${it.mand && it.type !== "CHECK" ? `<span class="req">*</span>` : ""}</div>`;
+  if (it.type === "CHECK") {
+    const state = x.status === "Defect" ? "defect" : x.status === "Rigger required" ? "rig" : x.status ? "done" : "";
+    const showComment = ["Defect", "Not visible", "Rigger required"].includes(x.status) || x.comment;
+    return `<div class="card ${state}" id="c-${it.code}" data-code="${it.code}">${head}
+      ${it.look ? `<details><summary>What to look for</summary><p>${esc(it.look)}</p>${it.rating ? `<p>Suggested rating: <b>${esc(it.rating)}</b></p>` : ""}</details>` : ""}
+      <div class="seg">${STATUSES.map(st => `<button class="s-${cls(st)} ${x.status === st ? "on" : ""}" data-act="status" data-v="${st}">${STATUS_SHORT[st]}</button>`).join("")}</div>
+      ${x.status === "Defect" ? `<div class="lbl">Rating <span class="req">*</span>${it.rating ? ` (suggested: ${esc(it.rating)})` : ""}</div>
+        <div class="seg">${RATINGS.map(r => `<button class="r-${r} ${x.rating === r ? "on" : ""} ${it.rating === r && x.rating !== r ? "sugg" : ""}" data-act="rating" data-v="${r}">${r}</button>`).join("")}</div>` : ""}
+      ${x.status === "Defect" || photosOf(cur, it.code).length || x.status === "Rigger required" || x.status === "Not visible" ? photoStrip(it) :
+        `<button class="linkbtn" data-act="photo">&#128247; Add photo</button>`}
+      ${showComment ? `<textarea data-f="comment" placeholder="Comment${x.status === "Defect" ? " - describe the defect, location, extent" : ""}">${esc(x.comment || "")}</textarea>` :
+        `<button class="linkbtn" data-act="comment">+ Comment</button>`}
+    </div>`;
+  }
+  let input;
+  const v = x.value ?? "";
+  if (it.code === "AL-SD-01" || it.code === "AL-SD-03") {
+    input = `<div><b>${esc(v)}</b> <span class="muted">(set when the site was created)</span></div>`;
+  } else if (it.type === "LIST" && it.options.length <= 6) {
+    input = `<div class="seg">${it.options.map(o => `<button class="opt ${v === o ? "on" : ""}" data-act="opt" data-v="${esc(o)}">${esc(o)}</button>`).join("")}</div>`;
+  } else if (it.type === "LIST") {
+    input = `<select data-f="value"><option value=""></option>${it.options.map(o => `<option ${v === o ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`;
+  } else if (it.type === "NUMBER") {
+    input = `<input type="number" inputmode="decimal" data-f="value" value="${esc(v)}">`;
+  } else if (it.type === "DATE") {
+    input = `<input type="date" data-f="value" value="${esc(v)}">`;
+  } else {
+    const gps = it.options.includes("GPS");
+    input = `${gps ? `<div class="row"><input type="text" data-f="value" value="${esc(v)}" placeholder="26.123456, 50.123456"><button class="btn small" style="flex:0 0 auto" data-act="gps">&#128205; GPS</button></div>` :
+      `<textarea data-f="value" rows="1" ${it.photo ? 'placeholder="Notes (optional)"' : ""}>${esc(v)}</textarea>`}`;
+  }
+  const done = isAnswered(cur, it);
+  return `<div class="card ${done ? "done" : ""}" id="c-${it.code}" data-code="${it.code}">${head}${input}
+    ${it.photo ? photoStrip(it) : ""}</div>`;
+}
+function refreshCard(code) {
+  const el = document.getElementById("c-" + code), it = itemByCode(code);
+  if (!el || !it) return;
+  const tmp = document.createElement("div"); tmp.innerHTML = cardHTML(it);
+  el.replaceWith(tmp.firstElementChild);
+}
+
+let pendingPhotoCode = null;
+function onCardClick(e) {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  if (b.closest("#eqCard")) return onEqClick(e, b);
+  const card = b.closest("[data-code]"); const code = card && card.dataset.code; const act = b.dataset.act;
+  if (act === "view") return viewPhoto(b.dataset.ref);
+  if (!code) return;
+  const x = val(code);
+  if (act === "status") {
+    x.status = x.status === b.dataset.v ? "" : b.dataset.v;
+    if (x.status !== "Defect") delete x.rating;
+  } else if (act === "rating") {
+    x.rating = x.rating === b.dataset.v ? "" : b.dataset.v;
+  } else if (act === "opt") {
+    x.value = x.value === b.dataset.v ? "" : b.dataset.v;
+    if (code === "AL-EQP-01") { scheduleSave(); refreshCard(code); return; }
+  } else if (act === "comment") {
+    x.comment = x.comment || ""; refreshCard(code);
+    const ta = document.querySelector(`#c-${CSS.escape(code)} textarea`); if (ta) ta.focus();
+    return;
+  } else if (act === "photo") {
+    pendingPhotoCode = code; $("#fileInput").value = ""; $("#fileInput").click(); return;
+  } else if (act === "gps") {
+    return getGPS(code);
+  }
+  scheduleSave(); refreshCard(code);
+}
+function onCardInput(e) {
+  const f = e.target.dataset.f; if (!f) return;
+  if (e.target.closest("#eqCard")) return onEqInput(e);
+  const card = e.target.closest("[data-code]"); if (!card) return;
+  val(card.dataset.code)[f] = e.target.value;
+  if (e.type === "change") {
+    const it = itemByCode(card.dataset.code);
+    if (it && it.type !== "CHECK") card.classList.toggle("done", isAnswered(cur, it));
+  }
+  scheduleSave();
+}
+function getGPS(code) {
+  if (!navigator.geolocation) return toast("GPS not available");
+  toast("Getting location...");
+  navigator.geolocation.getCurrentPosition(p => {
+    val(code).value = p.coords.latitude.toFixed(6) + ", " + p.coords.longitude.toFixed(6);
+    scheduleSave(); refreshCard(code); toast(`Location set (accuracy ${Math.round(p.coords.accuracy)} m)`);
+  }, err => toast("Location failed: " + err.message, 4000), {enableHighAccuracy: true, timeout: 20000, maximumAge: 0});
+}
+
+/* ---------------- photos ---------------- */
+$("#fileInput").addEventListener("change", async e => {
+  const files = [...e.target.files]; const code = pendingPhotoCode; pendingPhotoCode = null;
+  if (!files.length || !code || !cur) return;
+  for (const f of files) {
+    try {
+      const blob = await resizeImage(f);
+      const ref = "P" + String(cur.next_photo++).padStart(3, "0");
+      await dbPut("photos", {key: cur.uid + "/" + ref, uid: cur.uid, ref, blob});
+      cur.photos.push({ref, item: code, taken: new Date().toISOString()});
+      photoURL[ref] = URL.createObjectURL(blob);
+      await saveNow();
+    } catch (err) { toast("Photo failed: " + err.message, 4000); }
+  }
+  refreshCard(code);
+});
+async function resizeImage(file, max = 1600, q = 0.82) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("cannot read image")); i.src = url; });
+    const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.round(img.naturalWidth * s), h = Math.round(img.naturalHeight * s);
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    c.getContext("2d").drawImage(img, 0, 0, w, h);
+    const blob = await new Promise(res => c.toBlob(res, "image/jpeg", q));
+    if (!blob) throw new Error("cannot convert image");
+    return blob;
+  } finally { URL.revokeObjectURL(url); }
+}
+function viewPhoto(ref) {
+  const p = cur.photos.find(x => x.ref === ref); if (!p) return;
+  const it = itemByCode(p.item);
+  const ov = document.createElement("div"); ov.className = "overlay";
+  ov.innerHTML = `<img src="${photoURL[ref]}" alt="${ref}"><div style="margin-top:8px"><b>${ref}</b> &middot; ${esc(it ? it.desc : p.item)}</div>
+    <div class="row"><button class="btn danger" data-a="del">Delete photo</button><button class="btn primary" data-a="close">Close</button></div>`;
+  ov.onclick = async e => {
+    const a = e.target.dataset.a;
+    if (a === "close" || e.target === ov) ov.remove();
+    if (a === "del" && confirm(`Delete photo ${ref}?`)) {
+      cur.photos = cur.photos.filter(x => x.ref !== ref);
+      await dbDel("photos", cur.uid + "/" + ref);
+      URL.revokeObjectURL(photoURL[ref]); delete photoURL[ref];
+      await saveNow(); ov.remove(); refreshCard(p.item);
+    }
+  };
+  document.body.appendChild(ov);
+}
+
+/* ---------------- equipment table ---------------- */
+function eqHTML() {
+  const rows = cur.equipment.map((e, n) => {
+    const diff = eqDiff(e);
+    return `<div class="eq" data-n="${n}">
+      <div class="row"><select data-f="category">${EQ_CATS.map(c => `<option ${e.category === c ? "selected" : ""}>${c}</option>`).join("")}</select>
+        <input type="text" data-f="label" value="${esc(e.label)}" placeholder="Label"></div>
+      <div class="row" style="margin-top:6px">
+        <div><div class="lbl">Qty on LC</div><input type="number" inputmode="numeric" data-f="qty_lc" value="${esc(e.qty_lc)}"></div>
+        <div><div class="lbl">Qty found</div><input type="number" inputmode="numeric" data-f="qty_found" value="${esc(e.qty_found)}"></div>
+        <div><div class="lbl">Elev. (m)</div><input type="number" inputmode="decimal" data-f="elevation" value="${esc(e.elevation)}"></div></div>
+      <div class="lbl">Count basis</div>
+      <div class="seg">${EQ_BASIS.map(b => `<button class="opt ${e.count_basis === b ? "on" : ""}" data-act="basis" data-v="${b}">${b}</button>`).join("")}</div>
+      <input type="text" data-f="note" value="${esc(e.note)}" placeholder="Note (optional)">
+      <div class="row" style="margin-top:6px"><div class="muted">Difference: <span class="diff">${fmtDiff(diff)}</span></div>
+        <button class="linkbtn" style="flex:0 0 auto;color:var(--defect)" data-act="eqdel">Remove</button></div></div>`;
+  }).join("");
+  return `<div class="desc">Installed equipment vs load certificate</div>
+    <p class="muted">Use generic labels only (Antenna Type 1, RRU Type 1, MW &Oslash;0.6 m) - no brand or model names.</p>
+    ${rows || `<p class="muted">No equipment rows yet.</p>`}
+    <div class="seg">${EQ_CATS.map(c => `<button class="opt" data-act="eqadd" data-v="${c}">+ ${c}</button>`).join("")}</div>`;
+}
+const eqDiff = e => e.qty_lc !== "" && e.qty_found !== "" ? Number(e.qty_found) - Number(e.qty_lc) : null;
+const fmtDiff = d => d === null ? "-" : `<span class="${d > 0 ? "diff-pos" : ""}">${d > 0 ? "+" : ""}${d}</span>`;
+function refreshEq() { const el = $("#eqCard"); if (el) el.innerHTML = eqHTML(); }
+function onEqClick(e, b) {
+  const act = b.dataset.act, row = b.closest(".eq"), n = row ? Number(row.dataset.n) : -1;
+  if (act === "eqadd") {
+    const cat = b.dataset.v, k = cur.equipment.filter(x => x.category === cat).length + 1;
+    const label = cat === "MW dish" ? "MW Ø0.6 m" : cat === "Other" ? `Other ${k}` : `${cat} Type ${k}`;
+    const notCountable = (cur.values["AL-EQP-01"] || {}).value === NOT_COUNTABLE;
+    cur.equipment.push({category: cat, label, qty_lc: "", qty_found: "", elevation: "", count_basis: notCountable ? "Rigger required" : "Counted", note: ""});
+  } else if (act === "eqdel") {
+    if (!confirm("Remove this equipment row?")) return;
+    cur.equipment.splice(n, 1);
+  } else if (act === "basis") {
+    cur.equipment[n].count_basis = b.dataset.v;
+  }
+  scheduleSave(); refreshEq();
+}
+function onEqInput(e) {
+  const row = e.target.closest(".eq"); if (!row) return;
+  const n = Number(row.dataset.n), f = e.target.dataset.f;
+  cur.equipment[n][f] = e.target.value;
+  scheduleSave();
+  // update the difference in place - never re-render here, it would steal focus from the next field
+  if (f === "qty_lc" || f === "qty_found") row.querySelector(".diff").innerHTML = fmtDiff(eqDiff(cur.equipment[n]));
+}
+
+/* ---------------- review & export ---------------- */
+function renderReview() {
+  const t = typeOf(cur.type_code), stt = stats(cur), {errs, warns} = validate(cur);
+  const secIdx = no => (curSections.find(s => s.no === no) || {}).idx || "";
+  const link = i => `#/site/${cur.uid}/sec/${i.sec}${i.code ? `?focus=${i.code}` : ""}`;
+  const stRow = STATUSES.map(s => `${STATUS_SHORT[s]}: <b>${stt.st[s] || 0}</b>`).join(" &middot; ");
+  app.innerHTML = bar("Review & export", cur.site_id, `#/site/${cur.uid}`) + `<main>
+    <div class="card"><div class="desc">${esc(cur.site_id)} &middot; ${esc(t ? t.label : cur.type_code)}</div>
+      <div>Overall rating: ${stt.overall ? `<span class="chip ${stt.overall}">${stt.overall}</span>` : "<b>No defects</b>"}</div>
+      <div style="margin-top:4px">${chips(stt.counts)}</div>
+      <div class="muted" style="margin-top:6px">${stRow}</div>
+      <div class="muted">${cur.equipment.length} equipment rows &middot; ${cur.photos.length} photos</div>
+      ${cur.exported_at ? `<div class="muted">Last exported: ${esc(cur.exported_at.replace("T", " ").slice(0, 16))}</div>` : ""}</div>
+    <h2>${errs.length ? `${errs.length} item(s) to complete` : "Complete - no missing items"}</h2>
+    ${errs.map(i => `<a class="issue err" href="${link(i)}">${secIdx(i.sec)}. ${esc(i.msg)}</a>`).join("")}
+    ${warns.length ? `<h2>${warns.length} warning(s)</h2>` : ""}
+    ${warns.map(i => `<a class="issue warn" href="${link(i)}">${secIdx(i.sec)}. ${esc(i.msg)}</a>`).join("")}
+    <p class="muted">The export file (.zip) holds the checklist and all photos. Send it to the office (email, WhatsApp, OneDrive).</p>
+  </main><nav class="bottom"><button class="btn" id="dl">Download</button><button class="btn primary" id="share">Export &amp; send</button></nav>`;
+  $("#dl").onclick = () => doExport(false);
+  $("#share").onclick = () => doExport(true);
+}
+async function doExport(share) {
+  await saveNow();
+  const {errs, warns} = validate(cur);
+  if (errs.length && !confirm(`${errs.length} item(s) are not complete. Export anyway (e.g. as a backup)?`)) return;
+  toast("Preparing file...");
+  try {
+    const blob = await buildExport(cur, errs, warns);
+    const stamp = new Date().toISOString().slice(0, 16).replace(/[-:]/g, "").replace("T", "-");
+    const name = `${cur.site_id.replace(/[^A-Za-z0-9._-]+/g, "_")}_field_${stamp}.zip`;
+    const file = new File([blob], name, {type: "application/zip"});
+    let shared = false;
+    if (share && navigator.canShare && navigator.canShare({files: [file]})) {
+      try { await navigator.share({files: [file], title: name}); shared = true; }
+      catch (e) { if (e.name === "AbortError") return; }
+    }
+    if (!shared) {
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    }
+    cur.exported_at = new Date().toISOString(); await saveNow();
+    toast(shared ? "Shared" : `Saved ${name}`, 4000);
+  } catch (e) { toast("Export failed: " + e.message, 5000); console.error(e); }
+}
+async function buildExport(site, errs, warns) {
+  const t = typeOf(site.type_code);
+  const items = itemsFor(site.type_code).map(i => {
+    const x = site.values[i.code] || {};
+    return {code: i.code, sec: i.sec, section: i.section, rfq: i.rfq, desc: i.desc, look: i.look, input_type: i.type,
+      options: i.options, default_rating: i.rating, photo_required: i.photo, mandatory: i.mand, rec: i.rec,
+      status: x.status || "", rating: x.status === "Defect" ? (x.rating || "") : "", value: x.value ?? "",
+      comment: x.comment || "", photos: photosOf(site, i.code), recommendation: ""};
+  });
+  const data = {format: "PRS-FIELD", format_version: 1, app_version: APP_VERSION, library_version: LIB.version,
+    exported_at: new Date().toISOString(), source: "Phone form", site_id: site.site_id, type_code: site.type_code,
+    type_label: t ? t.label : site.type_code, complete: errs.length === 0,
+    issues: [...errs.map(i => "Missing: " + i.msg), ...warns.map(i => "Warning: " + i.msg)],
+    items, equipment: site.equipment,
+    photos: site.photos.map(p => ({ref: p.ref, item: p.item, file: `photos/${p.ref}.jpg`, taken: p.taken}))};
+  const enc = new TextEncoder();
+  const files = [{name: "checklist.json", data: enc.encode(JSON.stringify(data, null, 1))}];
+  for (const p of await sitePhotos(site.uid)) {
+    if (site.photos.some(x => x.ref === p.ref)) files.push({name: `photos/${p.ref}.jpg`, data: new Uint8Array(await p.blob.arrayBuffer())});
+  }
+  return makeZip(files);
+}
+
+/* ---------------- minimal ZIP writer (stored, no compression) ---------------- */
+const CRC_TABLE = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(u8) { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_TABLE[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function makeZip(files) {
+  const enc = new TextEncoder(), parts = [], central = [], d = new Date();
+  const time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  const date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  let offset = 0;
+  for (const f of files) {
+    const name = enc.encode(f.name), crc = crc32(f.data), size = f.data.length;
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
+    lh.setUint16(10, time, true); lh.setUint16(12, date, true); lh.setUint32(14, crc, true);
+    lh.setUint32(18, size, true); lh.setUint32(22, size, true); lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+    parts.push(lh.buffer, name, f.data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true);
+    ch.setUint16(10, 0, true); ch.setUint16(12, time, true); ch.setUint16(14, date, true); ch.setUint32(16, crc, true);
+    ch.setUint32(20, size, true); ch.setUint32(24, size, true); ch.setUint16(28, name.length, true);
+    ch.setUint32(42, offset, true);
+    central.push(ch.buffer, name);
+    offset += 30 + name.length + size;
+  }
+  const cdSize = central.reduce((a, b) => a + b.byteLength, 0);
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+  end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, end.buffer], {type: "application/zip"});
+}
+
+/* ---------------- start ---------------- */
+(async () => {
+  try { db = await openDB(); }
+  catch (e) { app.innerHTML = `<main><div class="card issue err">This browser cannot store data (${esc(e.message)}). Use Chrome or Safari, not a private window.</div></main>`; return; }
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+  route();
+})();
+</script>
+</body>
+</html>
